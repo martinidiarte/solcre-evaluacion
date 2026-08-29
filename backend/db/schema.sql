@@ -8,7 +8,7 @@ CREATE TABLE admins (
     last_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE voters (
@@ -20,15 +20,15 @@ CREATE TABLE voters (
     is_candidate BOOLEAN NOT NULL DEFAULT FALSE,
     address VARCHAR(255) NOT NULL,
     telephone_number VARCHAR(20) NOT NULL,
-    sex VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    sex ENUM('Masculino', 'Femenino', 'Otro') NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE votes (
     id INT PRIMARY KEY AUTO_INCREMENT,
     voter_id INT NOT NULL UNIQUE,
     candidate_id INT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    voted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     -- indice para optimizar la busqueda de votos por candidato
     INDEX idx_votes_candidate_id (candidate_id),
 
