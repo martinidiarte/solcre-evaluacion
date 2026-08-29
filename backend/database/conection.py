@@ -29,12 +29,3 @@ database_url = URL.create(
 #Creo el motor de SQLAlchemy para conectarme a la base de datos MySQL
 engine = create_engine(database_url, echo=True)  # echo=True para ver las consultas SQL en la consola   
 
-# El bloque 'with' asegura que la conexión se cierre automáticamente
-# 1. Abrimos la conexión
-with engine.connect() as connection:
-    # 2. Ejecutamos una consulta usando text()
-    resultado = connection.execute(text("SELECT 'Hola, mundo'"))
-    
-    # 3. Leemos los datos
-    for fila in resultado:
-        print(fila)
