@@ -1,0 +1,30 @@
+
+services:
+  backend:
+    build: ./backend #Usa el dockfile en el directorio backend para construir la imagen
+    container_name: solcre-backend
+    ports:
+      - "8000:8000"
+    #Configura las variables de entorno para la conexión a la base de datos MySQL. Estas variables se definen en el archivo .env y se pasan al contenedor del backend.
+    environment: 
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  db:
+    image: mysql:8.4
+    container_name: solcre-db
+    environment: #Para no subir las credenciales a github, se usan variables de entorno definidas en el archivo .env
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes: #Para persistir los datos de la base de datos MySQL, se define un volumen llamado mysql_data que se monta en el contenedor de la base de datos en la ruta /var/lib/mysql. Esto asegura que los datos no se pierdan cuando el contenedor se detenga o se elimine.
+  mysql_data:
