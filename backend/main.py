@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func, select
@@ -13,6 +14,17 @@ from schemas.voter import CandidateResponse, RankingResponse, VoterCreate, Voter
 
 app = FastAPI()
 
+#Esto permite que el frontend de React, que corre en:
+#http://localhost:5173
+#pueda hacer peticiones al backend en:
+#http://localhost:8000
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():
