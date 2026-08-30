@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 from sqlalchemy import text
-from sqlalchemy.orm import DeclarativeBase
 from pathlib import Path
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from dotenv import load_dotenv
 import os
@@ -10,10 +10,6 @@ import os
 # Cargar variables de entorno desde el archivo .env
 env_path = Path(__file__).resolve().parents[2] / ".env"
 load_dotenv(env_path)
-
-#Creo la clase base para los modelos de SQLAlchemy
-class Base(DeclarativeBase):
-    pass
 
 #Obtengo las variables de entorno para la conexión a la base de datos MySQL
 host = os.getenv("MYSQL_HOST")
@@ -38,5 +34,19 @@ database_url = URL.create(
     database=database
 )
 
-#Creo el motor de SQLAlchemy para conectarme a la base de datos MySQL
+# Creo el motor de SQLAlchemy para conectarme a la base de datos MySQL
 engine = create_engine(database_url, echo=True)  # echo=True para ver las consultas SQL en la consola   
+
+#Creo la clase base para los modelos de SQLAlchemy
+class Base(DeclarativeBase):
+    pass
+
+# Creo la sesión de SQLAlchemy para interactuar con la base de datos
+SessionLocal = sessionmaker(bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db # Comparte la session con el endpoint que la llame
+    finally:
+        db.close()
