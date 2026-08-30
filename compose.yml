@@ -5,6 +5,8 @@ services:
     container_name: solcre-backend
     ports:
       - "8000:8000"
+    volumes:
+    - ./backend:/app
     #Configura las variables de entorno para la conexión a la base de datos MySQL. Estas variables se definen en el archivo .env y se pasan al contenedor del backend.
     environment: 
       MYSQL_HOST: db

@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 #Cuando arranque el contenedor, ejecutar el comando para iniciar la aplicación FastAPI
-CMD ["fastapi", "run", "main.py", "--port", "8000"]
+CMD ["fastapi", "dev", "main.py", "--host", "0.0.0.0", "--port", "8000"]

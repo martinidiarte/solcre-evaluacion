@@ -38,7 +38,7 @@ CREATE TABLE votes (
 
 
 INSERT INTO admins (name, last_name, email, password_hash) VALUES
-('Martin', 'Idiarte', 'martinidiarte@example.com', '$2b$12$...' );
+('Martin', 'Idiarte', 'martinidiarte@example.com', '$argon2id$v=19$m=65536,t=3,p=4$NQklDFr1o5N7m5SJkaCsOw$eXwX5HcJsBZpu5QMU8W7Hm4Ez+w7HxfAeeQZOWD/3Ho' );
 
 INSERT INTO voters
 (name, last_name, document, dob, is_candidate, address, telephone_number, sex)

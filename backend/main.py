@@ -3,9 +3,11 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func, select
 
+from security import verify_password
 from db.connection import get_db
-from db.models import Voter, Vote
+from db.models import Admin, Voter, Vote
 
+from schemas.admin import AdminLogin
 from schemas.vote import VoteCreate, VoteDetailResponse, VoteListResponse, VoteResponse
 from schemas.voter import CandidateResponse, RankingResponse, VoterCreate, VotersResponse
 
@@ -137,11 +139,11 @@ def get_most_voted_candidates(db: Session = Depends(get_db)):
 
     # Ordenar por número de votos, limito a 5 candidatos y devuelvo la lista de candidatos con sus respectivos votos
     consulta = (select(Voter.id, Voter.name, Voter.last_name, func.count(Vote.id).label("number_votes"))
-        .outerjoin(Vote, Vote.candidate_id == Voter.id)
-        .where(Voter.is_candidate.is_(True))
-        .group_by(Voter.id, Voter.name, Voter.last_name)
-        .order_by(func.count(Vote.id).desc()) 
-        .limit(5)
+                .outerjoin(Vote, Vote.candidate_id == Voter.id)
+                .where(Voter.is_candidate.is_(True))
+                .group_by(Voter.id, Voter.name, Voter.last_name)
+                .order_by(func.count(Vote.id).desc()) 
+                .limit(5)
     )
 
     resultados = db.execute(consulta).mappings().all()
@@ -178,3 +180,22 @@ def create_voter(datos: VoterCreate, db: Session = Depends(get_db)):
     db.refresh(votante)
 
     return votante
+
+@app.post("/admin/login")
+def login(datos: AdminLogin, db: Session = Depends(get_db)):
+    consulta = select(Admin).where(Admin.email == datos.email)
+    admin = db.scalars(consulta).first()
+
+    if admin is None:
+        raise HTTPException(
+            status_code = 401,
+            detail = "Credenciales incorrectas"
+        )
+
+    if not verify_password(datos.password, admin.password_hash):
+        raise HTTPException(
+            status_code = 401,
+            detail = "Credenciales incorrectas"
+        )
+
+    return {"message": "Login correcto"}
