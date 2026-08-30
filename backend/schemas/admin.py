@@ -18,3 +18,8 @@ class AdminResponse(BaseModel):
 class AdminTokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+class AdminPasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+    confirm_new_password: str

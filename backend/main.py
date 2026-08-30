@@ -3,11 +3,11 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func, select
 
-from security import create_access_token, verify_password, get_current_admin
+from security import create_access_token, hash_password, verify_password, get_current_admin
 from db.connection import get_db
 from db.models import Admin, Voter, Vote
 
-from schemas.admin import AdminLogin, AdminTokenResponse
+from schemas.admin import AdminLogin, AdminPasswordChange, AdminTokenResponse
 from schemas.vote import VoteCreate, VoteDetailResponse, VoteListResponse, VoteResponse
 from schemas.voter import CandidateResponse, RankingResponse, VoterCreate, VotersResponse
 
@@ -216,3 +216,25 @@ def create_voter(datos: VoterCreate, db: Session = Depends(get_db),
     db.refresh(votante)
 
     return votante
+
+@app.post("/admin/change-password", status_code=200)
+def change_password(datos: AdminPasswordChange, db: Session = Depends(get_db),
+                    admin: Admin = Depends(get_current_admin)):
+
+    if not verify_password(datos.old_password, admin.password_hash):
+        raise HTTPException(
+            status_code = 401,
+            detail = "Contraseña Incorrecta"
+        )
+	
+    if not datos.new_password == datos.confirm_new_password:
+        raise HTTPException(
+            status_code = 400,
+            detail = "Las Contraseñas no Coinciden"
+        )
+
+    admin.password_hash = hash_password(datos.new_password)
+    
+    db.commit()
+		
+    return {"message": "Contraseña actualizada correctamente"}
