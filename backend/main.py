@@ -197,7 +197,7 @@ def get_most_voted_candidates(db: Session = Depends(get_db),
 
     return resultados
 
-@app.post("/voter, response_model=VotersResponse, status_code=201)")
+@app.post("/voter", response_model=VotersResponse, status_code=201)
 def create_voter(datos: VoterCreate, db: Session = Depends(get_db),
                     admin: Admin = Depends(get_current_admin)):
     # Verificar si el votante ya existe
@@ -236,13 +236,19 @@ def change_password(datos: AdminPasswordChange, db: Session = Depends(get_db),
     if not verify_password(datos.old_password, admin.password_hash):
         raise HTTPException(
             status_code = 401,
-            detail = "Contraseña Incorrecta"
+            detail = "Contraseña incorrecta"
         )
-	
+
+    if datos.old_password == datos.new_password:
+        raise HTTPException(
+            status_code = 400,
+            detail = "La nueva contraseña debe ser diferente a la actual"
+        )
+    
     if not datos.new_password == datos.confirm_new_password:
         raise HTTPException(
             status_code = 400,
-            detail = "Las Contraseñas no Coinciden"
+            detail = "Las contraseñas no coinciden"
         )
 
     admin.password_hash = hash_password(datos.new_password)
