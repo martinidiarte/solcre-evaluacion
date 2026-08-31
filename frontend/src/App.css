@@ -234,6 +234,131 @@
   background: rgba(6, 129, 118, 0.08);
 }
 
+.btn-table-action.btn-danger {
+  color: #b3413a;
+  border-color: rgba(179, 65, 58, 0.4);
+}
+
+.btn-table-action.btn-danger:hover {
+  border-color: #b3413a;
+  background: rgba(179, 65, 58, 0.08);
+}
+
+.btn-table-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-table-action:disabled:hover {
+  border-color: var(--border-strong);
+  background: transparent;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.highlight-card {
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 129, 118, 0.08);
+  border: 1px solid rgba(6, 129, 118, 0.25);
+}
+
+.highlight-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.highlight-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.highlight-name {
+  padding-left: 10px;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--turquoise);
+}
+
+.highlight-votes-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--primary);
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 140px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(105, 116, 49, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--turquoise), var(--green-light));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--olive);
+  min-width: 42px;
+  text-align: right;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 26, 20, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 10;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .modal-header {
   display: flex;
   align-items: center;

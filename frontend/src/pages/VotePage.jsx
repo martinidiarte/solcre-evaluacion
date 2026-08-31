@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../App.css'
 
 function VotePage() {
+  const navigate = useNavigate()
   const [candidates, setCandidates] = useState([])
   const [document, setDocument] = useState('')
   const [candidateId, setCandidateId] = useState('')
@@ -15,6 +17,12 @@ useEffect(() => {
     })
   }, [])
 function handleVote() {
+  if (
+    !document.trim()
+    ) {
+      setMessage('Todos los campos son obligatorios')
+      return
+    }
   fetch('http://localhost:8000/votes', {
     method: 'POST',
     headers: {
@@ -39,11 +47,17 @@ function handleVote() {
   return (
     <div className="page">
       <section id="center" className="card">
-        <h1 className="app-title">Sistema de Votación</h1>
+        <div className="modal-header">
+          <h1 className="app-title">Sistema de Votación</h1>
+          <button type="button" className="btn-table-action" onClick={() => navigate('/')}>
+            Volver al inicio
+          </button>
+        </div>
         <div className="form-group">
           <label className="form-label">Documento</label>
           <input type="text"
             className="form-input"
+            placeholder="Ej: 12345678"
             value={document}
             onChange={(event) => setDocument(event.target.value)}/>
         </div>

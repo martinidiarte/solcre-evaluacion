@@ -7,7 +7,6 @@ class VoteCreate(BaseModel):
     document: str
     candidate_id: int
 
-
     @field_validator('document')
     @classmethod
     def validate_document(cls, value: str):

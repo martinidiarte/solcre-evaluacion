@@ -11,6 +11,11 @@ function AdminPage() {
 
   const [votes, setVotes] = useState([])
   const [votesMessage, setVotesMessage] = useState('')
+  const [votesPage, setVotesPage] = useState(1)
+  const votesPerPage = 5
+
+  const [voteDetail, setVoteDetail] = useState(null)
+  const [voteDetailMessage, setVoteDetailMessage] = useState('')
 
   const [voterName, setVoterName] = useState('')
   const [voterLastName, setVoterLastName] = useState('')
@@ -26,6 +31,11 @@ function AdminPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [passwordMessage, setPasswordMessage] = useState('')
+
+  function handleLogout() {
+    sessionStorage.removeItem('access_token')
+    navigate('/')
+  }
 
   function authHeaders() {
     const token = sessionStorage.getItem('access_token')
@@ -68,7 +78,30 @@ function AdminPage() {
 
         setVotesMessage('')
         setVotes(data)
+        setVotesPage(1)
       })
+  }
+
+  function loadVoteDetail(id) {
+    setVoteDetailMessage('')
+    fetch(`http://localhost:8000/votes/${id}`, {
+      headers: authHeaders()
+    })
+      .then(async (response) => {
+        const data = await response.json()
+
+        if (!response.ok) {
+          setVoteDetailMessage(data.detail)
+          return
+        }
+
+        setVoteDetail(data)
+      })
+  }
+
+  function closeVoteDetail() {
+    setVoteDetail(null)
+    setVoteDetailMessage('')
   }
 
   useEffect(() => {
@@ -125,6 +158,20 @@ function AdminPage() {
   }
 
   function handleChangePassword() {
+    if (
+        !oldPassword.trim() ||
+        !newPassword.trim() ||
+        !confirmNewPassword.trim()
+    ) {
+        passwordMessage('Todos los campos son obligatorios')
+        return
+    }
+        if (
+        !newPassword != confirmNewPassword
+    ) {
+        passwordMessage('Las contraseñas no coinciden')
+        return
+    }
     fetch('http://localhost:8000/admin/change-password', {
       method: 'POST',
       headers: authHeaders(),
@@ -153,7 +200,12 @@ function AdminPage() {
   return (
     <div className="page">
       <section className="card panel">
-        <h1 className="app-title">Panel de administración</h1>
+        <div className="modal-header">
+          <h1 className="app-title">Panel de administración</h1>
+          <button type="button" className="btn-table-action btn-danger" onClick={handleLogout}>
+            Cerrar Sesion
+          </button>
+        </div>
 
         <nav className="tab-nav">
           <button type="button"
@@ -187,16 +239,30 @@ function AdminPage() {
                   <th>#</th>
                   <th>Candidato</th>
                   <th>Votos</th>
+                  <th>Porcentaje</th>
                 </tr>
               </thead>
               <tbody>
-                {ranking.map((candidate, index) => (
-                  <tr key={candidate.id}>
-                    <td>{index + 1}</td>
-                    <td>{candidate.name} {candidate.last_name}</td>
-                    <td>{candidate.number_votes}</td>
-                  </tr>
-                ))}
+                {ranking.map((candidate, index) => {
+                  const totalRankingVotes = ranking.reduce((sum, item) => sum + item.number_votes, 0)
+                  const percentage = totalRankingVotes > 0 ? (candidate.number_votes / totalRankingVotes) * 100 : 0
+
+                  return (
+                    <tr key={candidate.id}>
+                      <td>{index + 1}</td>
+                      <td>{candidate.name} {candidate.last_name}</td>
+                      <td>{candidate.number_votes}</td>
+                      <td>
+                        <div className="progress-row">
+                          <div className="progress-track">
+                            <div className="progress-fill" style={{ width: `${percentage}%` }} />
+                          </div>
+                          <span className="progress-label">{percentage.toFixed(1)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -205,6 +271,28 @@ function AdminPage() {
         {activeSection === 'votes' && (
           <div className="tab-content">
             {votesMessage && <p className="message message-error">{votesMessage}</p>}
+            {ranking.length > 0 && (() => {
+              const totalRankingVotes = ranking.reduce((sum, item) => sum + item.number_votes, 0)
+              const percentage = totalRankingVotes > 0 ? (ranking[0].number_votes / totalRankingVotes) * 100 : 0
+
+              return (
+                <div className="highlight-card">
+                  <div className="highlight-info">
+                    <span className="detail-label">Mas votado</span>
+                    <div className="highlight-name-row">
+                      <span className="highlight-name">{ranking[0].name} {ranking[0].last_name}</span>
+                      <span className="highlight-votes-badge">{ranking[0].number_votes} votos</span>
+                    </div>
+                    <div className="progress-row">
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${percentage}%` }} />
+                      </div>
+                      <span className="progress-label">{percentage.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
             <table className="data-table">
               <thead>
                 <tr>
@@ -215,14 +303,14 @@ function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {votes.map((vote) => (
+                {votes.slice((votesPage - 1) * votesPerPage, votesPage * votesPerPage).map((vote) => (
                   <tr key={vote.id}>
                     <td>{vote.voter_name} {vote.voter_last_name}</td>
                     <td>{vote.candidate_name} {vote.candidate_last_name}</td>
                     <td>{new Date(vote.voted_at).toLocaleString()}</td>
                     <td className="actions-cell">
                       <button type="button" className="btn-table-action"
-                        onClick={() => navigate(`/admin/votes/${vote.id}`)}>
+                        onClick={() => loadVoteDetail(vote.id)}>
                         Ver detalle
                       </button>
                     </td>
@@ -230,6 +318,23 @@ function AdminPage() {
                 ))}
               </tbody>
             </table>
+            {votes.length > 0 && (
+              <div className="pagination">
+                <button type="button" className="btn-table-action"
+                  disabled={votesPage === 1}
+                  onClick={() => setVotesPage((page) => page - 1)}>
+                  Anterior
+                </button>
+                <span className="pagination-info">
+                  Página {votesPage} de {Math.ceil(votes.length / votesPerPage)}
+                </span>
+                <button type="button" className="btn-table-action"
+                  disabled={votesPage >= Math.ceil(votes.length / votesPerPage)}
+                  onClick={() => setVotesPage((page) => page + 1)}>
+                  Siguiente
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -239,18 +344,21 @@ function AdminPage() {
               <div className="form-group">
                 <label className="form-label">Nombre</label>
                 <input type="text" className="form-input"
+                  placeholder="Ej: Juan"
                   value={voterName}
                   onChange={(event) => setVoterName(event.target.value)}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Apellido</label>
                 <input type="text" className="form-input"
+                  placeholder="Ej: Pérez"
                   value={voterLastName}
                   onChange={(event) => setVoterLastName(event.target.value)}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Documento</label>
                 <input type="text" className="form-input"
+                  placeholder="Ej: 12345678"
                   value={voterDocument}
                   onChange={(event) => setVoterDocument(event.target.value)}/>
               </div>
@@ -263,12 +371,14 @@ function AdminPage() {
               <div className="form-group">
                 <label className="form-label">Dirección</label>
                 <input type="text" className="form-input"
+                  placeholder="Ej: Av. Siempreviva 742"
                   value={voterAddress}
                   onChange={(event) => setVoterAddress(event.target.value)}/>
               </div>
               <div className="form-group">
                 <label className="form-label">Teléfono</label>
                 <input type="text" className="form-input"
+                  placeholder="Ej: 1122334455"
                   value={voterPhone}
                   onChange={(event) => setVoterPhone(event.target.value)}/>
               </div>
@@ -345,6 +455,58 @@ function AdminPage() {
           </div>
         )}
       </section>
+
+      {(voteDetail || voteDetailMessage) && (
+        <div className="modal-overlay" onClick={closeVoteDetail}>
+          <div className="modal-content" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="app-title">Detalle del voto</h2>
+              <button type="button" className="btn-table-action" onClick={closeVoteDetail}>
+                Cerrar
+              </button>
+            </div>
+
+            {voteDetailMessage && <p className="message message-error">{voteDetailMessage}</p>}
+
+            {voteDetail && (
+              <div className="detail-list">
+                <div className="detail-row">
+                  <span className="detail-label">Votante</span>
+                  <span className="detail-value">{voteDetail.voter_name} {voteDetail.voter_last_name}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Documento</span>
+                  <span className="detail-value">{voteDetail.voter_document}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Fecha de nacimiento</span>
+                  <span className="detail-value">{voteDetail.voter_dob}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Dirección</span>
+                  <span className="detail-value">{voteDetail.voter_address}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Teléfono</span>
+                  <span className="detail-value">{voteDetail.voter_telephone_number}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Sexo</span>
+                  <span className="detail-value">{voteDetail.voter_sex}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Candidato</span>
+                  <span className="detail-value">{voteDetail.candidate_name} {voteDetail.candidate_last_name}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Fecha del voto</span>
+                  <span className="detail-value">{new Date(voteDetail.voted_at).toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

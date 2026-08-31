@@ -37,11 +37,17 @@ function handleLogin() {
   return (
     <div className="page">
       <section id="center" className="card">
-        <h1 className="app-title">Ingresar</h1>
+        <div className="modal-header">
+          <h1 className="app-title">Ingresar</h1>
+          <button type="button" className="btn-table-action" onClick={() => navigate('/')}>
+            Volver al inicio
+          </button>
+        </div>
         <div className="form-group">
           <label className="form-label">Email </label>
           <input type="text"
             className="form-input"
+            placeholder="ejemplo@correo.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}/>
         </div>
