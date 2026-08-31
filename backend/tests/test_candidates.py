@@ -63,3 +63,48 @@ def test_most_voted_candidates_ranking_order():
     # El candidato que acabamos de crear tiene ahora el máximo estricto, debe quedar primero
     assert ranking[0]["id"] == top_candidate["id"]
     assert ranking[0]["number_votes"] == votes_needed
+
+def test_most_voted_candidates_expected_order():
+    headers = get_auth_headers(client)
+
+    # Partimos del máximo actual para que los tres candidatos que creamos queden
+    # con la cantidad de votos más alta de toda la tabla, sin importar los datos
+    # acumulados de corridas anteriores.
+    current_ranking = client.get("/candidates/most-voted", headers=headers).json()
+    base_votes = max((c["number_votes"] for c in current_ranking), default=0)
+
+    first_place = create_test_voter(headers, is_candidate=True, sex="Masculino")
+    second_place = create_test_voter(headers, is_candidate=True, sex="Femenino")
+    third_place = create_test_voter(headers, is_candidate=True, sex="Otro")
+
+    def vote_n_times(candidate, n):
+        for _ in range(n):
+            voter = create_test_voter(headers, is_candidate=False, sex="Masculino")
+            vote_response = client.post(
+                "/votes",
+                json={
+                    "document": voter["document"],
+                    "candidate_id": candidate["id"]
+                }
+            )
+            assert vote_response.status_code == 201
+
+    # Votos estrictamente decrecientes: first_place > second_place > third_place
+    vote_n_times(first_place, base_votes + 3)
+    vote_n_times(second_place, base_votes + 2)
+    vote_n_times(third_place, base_votes + 1)
+
+    response = client.get("/candidates/most-voted", headers=headers)
+    assert response.status_code == 200
+
+    ranking = response.json()
+    votes_by_id = {c["id"]: c["number_votes"] for c in ranking}
+
+    # Los tres deben aparecer en el ranking, con la cantidad de votos correcta
+    assert votes_by_id[first_place["id"]] == base_votes + 3
+    assert votes_by_id[second_place["id"]] == base_votes + 2
+    assert votes_by_id[third_place["id"]] == base_votes + 1
+
+    # Y en el orden exacto esperado: first_place, luego second_place, luego third_place
+    ranking_ids = [c["id"] for c in ranking]
+    assert ranking_ids.index(first_place["id"]) < ranking_ids.index(second_place["id"]) < ranking_ids.index(third_place["id"])

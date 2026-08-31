@@ -8,13 +8,16 @@ services:
     volumes:
     - ./backend:/app
     #Configura las variables de entorno para la conexión a la base de datos MySQL. Estas variables se definen en el archivo .env y se pasan al contenedor del backend.
-    environment: 
+    environment:
       MYSQL_HOST: db
       MYSQL_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      # Solo la usan los tests (tests/conftest.py) para crear la base solcre_test
+      # y darle permisos a MYSQL_USER, que por defecto solo tiene privilegios sobre MYSQL_DATABASE
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
 
   db:
     image: mysql:8.4

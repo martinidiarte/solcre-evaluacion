@@ -1,11 +1,83 @@
+import os
 import sys
 import uuid
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, delete, select, text
+from sqlalchemy.orm import sessionmaker
+
 from main import app
+from db.connection import Base, get_db
+from db import models  # noqa: F401 - registra las tablas de la app en Base.metadata
+from db.models import Admin, Vote, Voter
+from security.security import hash_password
+
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = os.getenv("MYSQL_PORT")
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+MYSQL_ROOT_PASSWORD = os.getenv("MYSQL_ROOT_PASSWORD")
+
+TEST_DATABASE = "solcre_test"
+
+# MYSQL_USER solo tiene privilegios sobre la base de desarrollo (MYSQL_DATABASE),
+# así que para crear la base de tests y darle acceso nos conectamos como root,
+# sin apuntar a ninguna base en particular.
+root_engine = create_engine(
+    f"mysql+pymysql://root:{MYSQL_ROOT_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/"
+)
+with root_engine.begin() as connection:
+    connection.execute(text(f"CREATE DATABASE IF NOT EXISTS {TEST_DATABASE}"))
+    connection.execute(text(f"GRANT ALL PRIVILEGES ON {TEST_DATABASE}.* TO '{MYSQL_USER}'@'%'"))
+    connection.execute(text("FLUSH PRIVILEGES"))
+root_engine.dispose()
+
+# Engine de tests: mismas credenciales de la app, apuntando a la base aislada solcre_test
+test_engine = create_engine(
+    f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{TEST_DATABASE}"
+)
+TestingSessionLocal = sessionmaker(bind=test_engine)
+
+Base.metadata.create_all(test_engine)
+
+def override_get_db():
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
+
+# Sembramos el admin que usan los tests de autenticación, si todavía no existe
+with TestingSessionLocal() as db:
+    admin_existente = db.scalars(
+        select(Admin).where(Admin.email == "martinidiarte@example.com")
+    ).first()
+
+    if admin_existente is None:
+        db.add(Admin(
+            name="Martin",
+            last_name="Idiarte",
+            email="martinidiarte@example.com",
+            password_hash=hash_password("admin123")
+        ))
+        db.commit()
+
+@pytest.fixture(autouse=True)
+def clean_test_database():
+    # Se ejecuta antes de cada test (autouse, scope "function" por defecto).
+    # Vacía votes y voters -en ese orden, por la foreign key- para que cada test
+    # arranque con datos predecibles, sin recrear las tablas ni tocar admins
+    # (así el admin de testing sembrado más arriba sigue disponible para el login).
+    with TestingSessionLocal() as db:
+        db.execute(delete(Vote))
+        db.execute(delete(Voter))
+        db.commit()
 
 client = TestClient(app)
 
