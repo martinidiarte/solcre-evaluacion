@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../App.css'
+import { getMostVoted, getVotes, getVoteId, addVoter, changePass } from '../services/adminServices'
+
 
 function AdminPage() {
   const navigate = useNavigate()
@@ -37,20 +39,12 @@ function AdminPage() {
     navigate('/')
   }
 
-  function authHeaders() {
-    const token = sessionStorage.getItem('access_token')
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    }
-  }
-
   function loadRanking() {
     setActiveSection('ranking')
-    fetch('http://localhost:8000/candidates/most-voted', {
-      headers: authHeaders()
-    })
+    getMostVoted()
       .then(async (response) => {
+        if (!response) return
+
         const data = await response.json()
 
         if (!response.ok) {
@@ -65,10 +59,10 @@ function AdminPage() {
 
   function loadVotes() {
     setActiveSection('votes')
-    fetch('http://localhost:8000/votes', {
-      headers: authHeaders()
-    })
+    getVotes()
       .then(async (response) => {
+        if (!response) return
+
         const data = await response.json()
 
         if (!response.ok) {
@@ -84,10 +78,10 @@ function AdminPage() {
 
   function loadVoteDetail(id) {
     setVoteDetailMessage('')
-    fetch(`http://localhost:8000/votes/${id}`, {
-      headers: authHeaders()
-    })
+    getVoteId(id)
       .then(async (response) => {
+        if (!response) return
+
         const data = await response.json()
 
         if (!response.ok) {
@@ -108,7 +102,8 @@ function AdminPage() {
     loadRanking()
   }, [])
 
-  function handleAddVoter() {
+  function handleAddVoter(event) {
+    event.preventDefault()
 
     if (
         !voterName.trim() ||
@@ -122,29 +117,43 @@ function AdminPage() {
         setVoterMessage('Todos los campos son obligatorios')
         return
     }
+
+    if (!/^\d+$/.test(voterPhone)) {
+        setVoterMessage('El teléfono solo debe contener dígitos')
+        return
+    }
+
     const today = new Date()
     const birthDate = new Date(voterDob)
-
+    
     if (birthDate > today) {
         setVoterMessage('La fecha de nacimiento no puede ser futura')
         return
     }
-    fetch('http://localhost:8000/voter', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        name: voterName,
-        last_name: voterLastName,
-        document: voterDocument,
-        dob: voterDob,
-        is_candidate: voterIsCandidate,
-        address: voterAddress,
-        telephone_number: voterPhone,
-        sex: voterSex
-      })
-    })
-        
+
+    const adultDate = new Date(
+        today.getFullYear() - 18,
+        today.getMonth(),
+        today.getDate()
+    )
+
+    if (birthDate > adultDate) {
+        setVoterMessage('El votante debe ser mayor de 18 años')
+        return
+    }
+    addVoter({
+      name: voterName,
+      last_name: voterLastName,
+      document: voterDocument,
+      dob: voterDob,
+      is_candidate: voterIsCandidate,
+      address: voterAddress,
+      telephone_number: voterPhone,
+      sex: voterSex
+    })       
       .then(async (response) => {
+        if (!response) return
+
         const data = await response.json()
 
 
@@ -157,31 +166,28 @@ function AdminPage() {
       })
   }
 
-  function handleChangePassword() {
+  function handleChangePassword(event) {
+    event.preventDefault()
     if (
         !oldPassword.trim() ||
         !newPassword.trim() ||
         !confirmNewPassword.trim()
     ) {
-        passwordMessage('Todos los campos son obligatorios')
+        setPasswordMessage('Todos los campos son obligatorios')
         return
     }
-        if (
-        !newPassword != confirmNewPassword
-    ) {
-        passwordMessage('Las contraseñas no coinciden')
-        return
+    if (newPassword !== confirmNewPassword) {
+      setPasswordMessage('Las contraseñas no coinciden')
+      return
     }
-    fetch('http://localhost:8000/admin/change-password', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        old_password: oldPassword,
-        new_password: newPassword,
-        confirm_new_password: confirmNewPassword
-      })
+    changePass({
+      old_password: oldPassword,
+      new_password: newPassword,
+      confirm_new_password: confirmNewPassword
     })
       .then(async (response) => {
+        if (!response) return
+
         const data = await response.json()
 
         if (!response.ok) {
@@ -340,82 +346,84 @@ function AdminPage() {
 
         {activeSection === 'addVoter' && (
           <div className="tab-content">
-            <div className="form-grid">
-              <div className="form-group">
-                <label className="form-label">Nombre</label>
-                <input type="text" className="form-input"
-                  placeholder="Ej: Juan"
-                  value={voterName}
-                  onChange={(event) => setVoterName(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Apellido</label>
-                <input type="text" className="form-input"
-                  placeholder="Ej: Pérez"
-                  value={voterLastName}
-                  onChange={(event) => setVoterLastName(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Documento</label>
-                <input type="text" className="form-input"
-                  placeholder="Ej: 12345678"
-                  value={voterDocument}
-                  onChange={(event) => setVoterDocument(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Fecha de nacimiento</label>
-                <input type="date" className="form-input"
-                  value={voterDob}
-                  onChange={(event) => setVoterDob(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Dirección</label>
-                <input type="text" className="form-input"
-                  placeholder="Ej: Av. Siempreviva 742"
-                  value={voterAddress}
-                  onChange={(event) => setVoterAddress(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Teléfono</label>
-                <input type="text" className="form-input"
-                  placeholder="Ej: 1122334455"
-                  value={voterPhone}
-                  onChange={(event) => setVoterPhone(event.target.value)}/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Sexo</label>
-                <select className="form-select"
-                  value={voterSex}
-                  onChange={(event) => setVoterSex(event.target.value)}>
-                  <option value="">Seleccione</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Femenino">Femenino</option>
-                  <option value="Otro">Otro</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <span className="form-label">¿Es candidato?</span>
-                <div className="radio-options">
-                  <label className="form-label-radio">
-                    <input type="radio"
-                      name="isCandidate"
-                      checked={voterIsCandidate === true}
-                      onChange={() => setVoterIsCandidate(true)}/>
-                    Sí
-                  </label>
-                  <label className="form-label-radio">
-                    <input type="radio"
-                      name="isCandidate"
-                      checked={voterIsCandidate === false}
-                      onChange={() => setVoterIsCandidate(false)}/>
-                    No
-                  </label>
+            <form className="form-stack" onSubmit={handleAddVoter}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Nombre</label>
+                  <input type="text" className="form-input"
+                    placeholder="Ej: Juan"
+                    value={voterName}
+                    onChange={(event) => setVoterName(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Apellido</label>
+                  <input type="text" className="form-input"
+                    placeholder="Ej: Pérez"
+                    value={voterLastName}
+                    onChange={(event) => setVoterLastName(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Documento</label>
+                  <input type="text" className="form-input"
+                    placeholder="Ej: 12345678"
+                    value={voterDocument}
+                    onChange={(event) => setVoterDocument(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Fecha de nacimiento</label>
+                  <input type="date" className="form-input"
+                    value={voterDob}
+                    onChange={(event) => setVoterDob(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Dirección</label>
+                  <input type="text" className="form-input"
+                    placeholder="Ej: Av. Siempreviva 742"
+                    value={voterAddress}
+                    onChange={(event) => setVoterAddress(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Teléfono</label>
+                  <input type="text" className="form-input"
+                    placeholder="Ej: 1122334455"
+                    value={voterPhone}
+                    onChange={(event) => setVoterPhone(event.target.value)}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Sexo</label>
+                  <select className="form-select"
+                    value={voterSex}
+                    onChange={(event) => setVoterSex(event.target.value)}>
+                    <option value="">Seleccione</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                    <option value="Otro">Otro</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <span className="form-label">¿Es candidato?</span>
+                  <div className="radio-options">
+                    <label className="form-label-radio">
+                      <input type="radio"
+                        name="isCandidate"
+                        checked={voterIsCandidate === true}
+                        onChange={() => setVoterIsCandidate(true)}/>
+                      Sí
+                    </label>
+                    <label className="form-label-radio">
+                      <input type="radio"
+                        name="isCandidate"
+                        checked={voterIsCandidate === false}
+                        onChange={() => setVoterIsCandidate(false)}/>
+                      No
+                    </label>
+                  </div>
                 </div>
               </div>
-            </div>
-            <button type="button" className="btn-primary" onClick={handleAddVoter}>
-              Agregar votante
-            </button>
+              <button type="submit" className="btn-primary">
+                Agregar votante
+              </button>
+            </form>
             {voterMessage && (
               <p className={`message ${voterMessage === 'Votante agregado correctamente' ? 'message-success' : 'message-error'}`}>
                 {voterMessage}
@@ -426,27 +434,29 @@ function AdminPage() {
 
         {activeSection === 'password' && (
           <div className="tab-content">
-            <div className="form-group">
-              <label className="form-label">Contraseña actual</label>
-              <input type="password" className="form-input"
-                value={oldPassword}
-                onChange={(event) => setOldPassword(event.target.value)}/>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Nueva contraseña</label>
-              <input type="password" className="form-input"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}/>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Confirmar nueva contraseña</label>
-              <input type="password" className="form-input"
-                value={confirmNewPassword}
-                onChange={(event) => setConfirmNewPassword(event.target.value)}/>
-            </div>
-            <button type="button" className="btn-primary" onClick={handleChangePassword}>
-              Cambiar contraseña
-            </button>
+            <form className="form-stack" onSubmit={handleChangePassword}>
+              <div className="form-group">
+                <label className="form-label">Contraseña actual</label>
+                <input type="password" className="form-input"
+                  value={oldPassword}
+                  onChange={(event) => setOldPassword(event.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nueva contraseña</label>
+                <input type="password" className="form-input"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Confirmar nueva contraseña</label>
+                <input type="password" className="form-input"
+                  value={confirmNewPassword}
+                  onChange={(event) => setConfirmNewPassword(event.target.value)}/>
+              </div>
+              <button type="submit" className="btn-primary">
+                Cambiar contraseña
+              </button>
+            </form>
             {passwordMessage && (
               <p className={`message ${passwordMessage === 'Contraseña actualizada correctamente' ? 'message-success' : 'message-error'}`}>
                 {passwordMessage}

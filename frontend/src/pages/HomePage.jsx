@@ -7,10 +7,10 @@ function HomePage() {
   return (
     <div className="page">
       <section className="card">
-        <h1 className="app-title">Bienvenido</h1>
-        <button type="button" className="btn-primary" onClick={() => navigate('/admin/login')}>
+        <button type="button" className="btn-table-action btn-corner" onClick={() => navigate('/admin/login')}>
           Ingresar
         </button>
+        <h1 className="app-title">Bienvenido</h1>
         <button type="button" className="btn-primary" onClick={() => navigate('/votar')}>
           Continuar como votante
         </button>

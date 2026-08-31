@@ -7,7 +7,8 @@ function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
-function handleLogin() {
+function handleLogin(event) {
+  event.preventDefault()
   fetch('http://localhost:8000/admin/login', {
     method: 'POST',
     headers: {
@@ -43,24 +44,26 @@ function handleLogin() {
             Volver al inicio
           </button>
         </div>
-        <div className="form-group">
-          <label className="form-label">Email </label>
-          <input type="text"
-            className="form-input"
-            placeholder="ejemplo@correo.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}/>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Contraseña </label>
-          <input type="password"
-            className="form-input"
-            value={password} 
-            onChange={(event) => setPassword(event.target.value)}/>
-        </div>
-        <button type="button" className="btn-primary" onClick={handleLogin}>
-          Ingresar
-        </button>
+        <form className="form-stack" onSubmit={handleLogin}>
+          <div className="form-group">
+            <label className="form-label">Email </label>
+            <input type="text"
+              className="form-input"
+              placeholder="ejemplo@correo.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Contraseña </label>
+            <input type="password"
+              className="form-input"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}/>
+          </div>
+          <button type="submit" className="btn-primary">
+            Ingresar
+          </button>
+        </form>
         {message && (
           <p className={`message ${message === 'Ingreso Exitoso' ? 'message-success' : 'message-error'}`}>
             {message}

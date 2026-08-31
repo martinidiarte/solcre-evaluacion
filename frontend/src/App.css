@@ -7,13 +7,26 @@
   padding-top: 64px;
 }
 
+.btn-corner {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
 @media (max-width: 480px) {
   .page {
     padding-top: 32px;
   }
 }
 
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
 .card {
+  position: relative;
   width: 100%;
   max-width: 420px;
   background: var(--surface);

@@ -16,7 +16,8 @@ useEffect(() => {
       setCandidates(data)
     })
   }, [])
-function handleVote() {
+function handleVote(event) {
+  event.preventDefault()
   if (
     !document.trim()
     ) {
@@ -53,34 +54,36 @@ function handleVote() {
             Volver al inicio
           </button>
         </div>
-        <div className="form-group">
-          <label className="form-label">Documento</label>
-          <input type="text"
-            className="form-input"
-            placeholder="Ej: 12345678"
-            value={document}
-            onChange={(event) => setDocument(event.target.value)}/>
-        </div>
-        <div className="form-group">
-          <label className="form-label">Candidato</label>
-          <select
-            className="form-select"
-            value={candidateId}
-            onChange={(event) => setCandidateId(event.target.value)}>
-            <option value="">Seleccione su candidato</option>
+        <form className="form-stack" onSubmit={handleVote}>
+          <div className="form-group">
+            <label className="form-label">Documento</label>
+            <input type="text"
+              className="form-input"
+              placeholder="Ej: 12345678"
+              value={document}
+              onChange={(event) => setDocument(event.target.value)}/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Candidato</label>
+            <select
+              className="form-select"
+              value={candidateId}
+              onChange={(event) => setCandidateId(event.target.value)}>
+              <option value="">Seleccione su candidato</option>
 
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name} {candidate.last_name}
-              </option>
-            ))
+              {candidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name} {candidate.last_name}
+                </option>
+              ))
 
-            }
-          </select>
-        </div>
-        <button type="button" className="btn-primary" onClick={handleVote}>
-          Votar
-        </button>
+              }
+            </select>
+          </div>
+          <button type="submit" className="btn-primary">
+            Votar
+          </button>
+        </form>
         {message && (
           <p className={`message ${message === 'Voto registrado correctamente' ? 'message-success' : 'message-error'}`}>
             {message}
