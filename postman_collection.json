@@ -1,0 +1,319 @@
+{
+  "info": {
+    "name": "Solcre Voting API",
+    "description": "Colección de Postman para la API de votación del proyecto Solcre.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "e8f7d6d9-318f-4d63-b9a3-3b7f8c849d7a"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login administrador",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "  pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+                  "}",
+                  "if (jsonData.token_type) {",
+                  "  pm.collectionVariables.set(\"token_type\", jsonData.token_type);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"martinidiarte@example.com\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cambiar contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"old_password\": \"admin123\",\n  \"new_password\": \"admin456\",\n  \"confirm_new_password\": \"admin456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/admin/change-password",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "admin",
+                "change-password"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Votantes y candidatos",
+      "item": [
+        {
+          "name": "Crear votante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ana\",\n  \"last_name\": \"Diaz\",\n  \"document\": \"12345678\",\n  \"dob\": \"1990-01-01\",\n  \"is_candidate\": false,\n  \"address\": \"Calle Falsa 123\",\n  \"telephone_number\": \"1122334455\",\n  \"sex\": \"Femenino\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/voter",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "voter"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener candidatos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/candidates",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener votante por documento",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/voters/12345678",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "voters",
+                "12345678"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener todos los votantes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/voters",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "voters"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranking de candidatos más votados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/candidates/most-voted",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "candidates",
+                "most-voted"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Votos",
+      "item": [
+        {
+          "name": "Crear voto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document\": \"12345678\",\n  \"candidate_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/votes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener todos los votos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/votes",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votes"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener detalle de un voto",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/votes/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "votes",
+                "1"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
