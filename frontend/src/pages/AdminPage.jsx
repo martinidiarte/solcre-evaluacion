@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import '../App.css'
 
 function AdminPage() {
+  const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('ranking')
 
   const [ranking, setRanking] = useState([])
@@ -209,6 +211,7 @@ function AdminPage() {
                   <th>Votante</th>
                   <th>Candidato</th>
                   <th>Fecha</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -217,6 +220,12 @@ function AdminPage() {
                     <td>{vote.voter_name} {vote.voter_last_name}</td>
                     <td>{vote.candidate_name} {vote.candidate_last_name}</td>
                     <td>{new Date(vote.voted_at).toLocaleString()}</td>
+                    <td className="actions-cell">
+                      <button type="button" className="btn-table-action"
+                        onClick={() => navigate(`/admin/votes/${vote.id}`)}>
+                        Ver detalle
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

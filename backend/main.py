@@ -167,7 +167,7 @@ def get_vote(id: int, db: Session = Depends(get_db),
                         Candidato.name.label("candidate_name"), Candidato.last_name.label("candidate_last_name"),
                         Vote.voted_at)
                     .join(Votante, Vote.voter_id == Votante.id)
-                    .join(Candidato, Vote.candidate_id == Candidato.id).where(Vote.id == id).first())
+                    .join(Candidato, Vote.candidate_id == Candidato.id).where(Vote.id == id))
     voto = db.execute(consulta).mappings().first()
 
     if voto is None:

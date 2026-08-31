@@ -5,6 +5,7 @@ function VotePage() {
   const [candidates, setCandidates] = useState([])
   const [document, setDocument] = useState('')
   const [candidateId, setCandidateId] = useState('')
+  const [voteId, setVoteId] = useState('')
   const [message, setMessage] = useState('')
 useEffect(() => {
   fetch('http://localhost:8000/candidates')

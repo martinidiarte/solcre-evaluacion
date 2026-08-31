@@ -1,7 +1,10 @@
 from datetime import date, datetime
+
 from enum import Enum
 
-from pydantic import BaseModel
+import re
+
+from pydantic import BaseModel, field_validator
 
 class Sex(str, Enum):
     masculino = "Masculino"
@@ -18,6 +21,53 @@ class VoterCreate(BaseModel):
     telephone_number: str
     sex: Sex
 
+    # Validar no vacio
+    @field_validator(
+        'name',
+        'last_name',
+        'document',
+        'address',
+        'telephone_number'
+    )
+    @classmethod
+    def validate_not_empty(cls, value: str):
+        value = value.strip()
+
+        if not value:
+            raise ValueError('El campo no puede estar vacío')
+
+        return value
+    
+    # Telefono solo acepta numeros
+    @field_validator('telephone_number')
+    @classmethod
+    def validate_phone(cls, value: str):
+        if not value.isdigit():
+            raise ValueError('El teléfono debe contener solo números')
+
+        return value
+
+    # Nombres y Apellidos validos usando expresiones regulares
+    @field_validator('name', 'last_name')
+    @classmethod
+    def validate_name(cls, value: str):
+        if not re.fullmatch(r"[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+", value):
+            raise ValueError('El nombre y apellido solo pueden contener letras y espacios')
+
+        return value
+
+    # No permitir fechas futuras
+    @field_validator('dob')
+    @classmethod
+    def validate_dob(cls, value: date):
+        if value > date.today():
+            raise ValueError(
+                'La fecha de nacimiento no puede ser futura'
+            )
+
+        return value
+
+    
 # Votantes que son candidatos
 class CandidateResponse(BaseModel):
     id: int
