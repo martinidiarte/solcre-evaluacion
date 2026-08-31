@@ -10,7 +10,7 @@ Sistema de votación con backend en FastAPI (MySQL + SQLAlchemy) y frontend en R
 ## Requisitos previos
 
 - Docker y Docker Compose (para el backend y la base de datos)
-- Node.js 18+ y npm (para el frontend, que corre fuera de Docker)
+- Node.js 20.19+ y npm (para el frontend, que corre fuera de Docker)
 
 ## 1. Variables de entorno
 
