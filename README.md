@@ -10,7 +10,7 @@ Sistema de votación con backend en FastAPI (MySQL + SQLAlchemy) y frontend en R
 ## Requisitos previos
 
 - Docker y Docker Compose (para el backend y la base de datos)
-- Node.js 18+ y npm (para el frontend, que corre fuera de Docker)
+- Node.js 20.19+ y npm (para el frontend, que corre fuera de Docker)
 
 ## 1. Variables de entorno
 
@@ -26,7 +26,7 @@ MYSQL_PORT=3306
 JWT_SECRET_KEY=
 ```
 
-`MYSQL_HOST` debe ser `db` (el nombre del servicio en [compose.yml](compose.yml)) y `MYSQL_PORT` `3306`. `MYSQL_ROOT_PASSWORD` solo la usan los tests, para crear la base `solcre_test` y darle permisos a `MYSQL_USER`.
+`MYSQL_HOST` debe ser `db` (el nombre del servicio en [compose.yml](compose.yml)) y `MYSQL_PORT` `3306`. `MYSQL_ROOT_PASSWORD` se utiliza para tareas administrativas de MySQL, como inicializar la base de datos y crear la base aislada utilizada por los tests.
 
 ## 2. Levantar el backend y la base de datos
 
@@ -43,33 +43,41 @@ Esto levanta dos contenedores:
 
 El contenedor de MySQL arranca con la base vacía. Elegir una de estas dos opciones:
 
-**Opción A — [backend/db/schema.sql](backend/db/schema.sql):** crea las tablas y carga datos de ejemplo (un admin y varios voters/candidates).
+### Opción A — `backend/db/schema.sql` (recomendada)
 
-```
-docker compose exec -T db mysql -uroot -p<MYSQL_ROOT_PASSWORD> <MYSQL_DATABASE> < backend/db/schema.sql
-```
+Crea las tablas y carga los datos iniciales necesarios para probar la aplicación:
+
+- 1 administrador.
+- 10 votantes.
+- 8 votantes comunes.
+- 2 candidatos.
 
 En PowerShell:
 
 ```
-Get-Content backend/db/schema.sql | docker compose exec -T db mysql -uroot -p<MYSQL_ROOT_PASSWORD> <MYSQL_DATABASE>
+docker cp .\backend\db\schema.sql solcre-db:/tmp/schema.sql
+docker compose exec db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE" < /tmp/schema.sql'
 ```
 
-El hash de contraseña del admin sembrado en ese script no está documentado en el repo. Si no conocés la contraseña en texto plano, generá un hash nuevo y actualizalo:
+### Credenciales de prueba
+
+El archivo `backend/db/schema.sql` crea un administrador de prueba con las siguientes credenciales:
 
 ```
-docker compose exec backend python -c "from security.security import hash_password; print(hash_password('tu_password'))"
+Email: martinidiarte@example.com
+Contraseña: admin123
 ```
 
-y actualizá el `password_hash` del admin (por email) directo en la base.
+Estas credenciales están destinadas únicamente al entorno local de evaluación. La contraseña se almacena en la base de datos mediante un hash Argon2.
 
-**Opción B — Alembic:** aplica las migraciones (solo esquema, sin datos de ejemplo).
+### Opción B — Alembic
+
+Aplica las migraciones para crear la estructura de la base de datos:
 
 ```
 docker compose exec backend alembic upgrade head
 ```
-
-Con esta opción hay que crear el admin manualmente (mismo snippet de `hash_password` de arriba, insertado en la tabla `admins`).
+Esta opción crea únicamente la estructura de la base de datos y no carga los datos iniciales definidos en `schema.sql`.
 
 ## 4. Levantar el frontend
 
@@ -79,7 +87,7 @@ npm install
 npm run dev
 ```
 
-Corre en http://localhost:5173. El backend tiene CORS habilitado específicamente para ese origen ([backend/main.py](backend/main.py)), y el frontend apunta a `http://localhost:8000` de forma hardcodeada, así que no requiere variables de entorno propias.
+Corre en http://localhost:5173. El backend tiene CORS habilitado específicamente para ese origen ([backend/main.py](backend/main.py)), y el frontend se comunica con la API disponible en `http://localhost:8000`, por lo que no requiere variables de entorno adicionales para ejecutarse localmente.
 
 ## Tests
 
