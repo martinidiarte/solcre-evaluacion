@@ -47,3 +47,5 @@ watchfiles==1.2.0
 websockets==17.1
 pwdlib[argon2]
 PyJWT
+pytest
+httpx

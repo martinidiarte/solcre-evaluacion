@@ -3,7 +3,8 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func, select
 
-from security import create_access_token, hash_password, verify_password, get_current_admin
+from security.security import create_access_token, hash_password, verify_password, get_current_admin
+
 from db.connection import get_db
 from db.models import Admin
 

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from db.connection import get_db
 from db.models import Admin, Voter, Vote
 
-from security import get_current_admin
+from security.security import get_current_admin
 
 from schemas.vote import VoteCreate, VoteDetailResponse, VoteListResponse, VoteResponse
 
