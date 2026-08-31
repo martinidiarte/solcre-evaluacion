@@ -67,7 +67,21 @@ class VoterCreate(BaseModel):
 
         return value
 
-    
+    # No permitir menores de 18 años
+    @field_validator('dob')
+    @classmethod
+    def validate_adult(cls, value: date):
+        today = date.today()
+        age = today.year - value.year
+
+        if (today.month, today.day) < (value.month, value.day):
+            age -= 1
+
+        if age < 18:
+            raise ValueError('El votante debe ser mayor de 18 años')
+
+        return value
+
 # Votantes que son candidatos
 class CandidateResponse(BaseModel):
     id: int
