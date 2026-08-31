@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from main import app
 from db.connection import Base, get_db
-from db import models  # noqa: F401 - registra las tablas de la app en Base.metadata
+from db import models 
 from db.models import Admin, Vote, Voter
 from security.security import hash_password
 
@@ -53,7 +53,7 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
-# Sembramos el admin que usan los tests de autenticación, si todavía no existe
+# Crea el admin necesario para los tests si todavía no existe
 with TestingSessionLocal() as db:
     admin_existente = db.scalars(
         select(Admin).where(Admin.email == "martinidiarte@example.com")
@@ -70,10 +70,8 @@ with TestingSessionLocal() as db:
 
 @pytest.fixture(autouse=True)
 def clean_test_database():
-    # Se ejecuta antes de cada test (autouse, scope "function" por defecto).
-    # Vacía votes y voters -en ese orden, por la foreign key- para que cada test
-    # arranque con datos predecibles, sin recrear las tablas ni tocar admins
-    # (así el admin de testing sembrado más arriba sigue disponible para el login).
+    # Se ejecuta antes de cada test
+    # Vacía votes y voters en ese orden, por la foreign key para que cada test
     with TestingSessionLocal() as db:
         db.execute(delete(Vote))
         db.execute(delete(Voter))

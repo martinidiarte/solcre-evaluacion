@@ -105,7 +105,6 @@ def test_change_password_authenticated():
     )
     assert response.status_code == 200
 
-    # Revertir la clave para no romper el resto de los tests, que dependen de admin123
     revert_response = client.post(
         "/admin/change-password",
         headers=headers,

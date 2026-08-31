@@ -40,7 +40,7 @@ CREATE TABLE votes (
 
 
 INSERT INTO admins (name, last_name, email, password_hash) VALUES
-('Martin', 'Idiarte', 'martinidiarte@example.com', '$argon2id$v=19$m=65536,t=3,p=4$NQklDFr1o5N7m5SJkaCsOw$eXwX5HcJsBZpu5QMU8W7Hm4Ez+w7HxfAeeQZOWD/3Ho' );
+('Martin', 'Idiarte', 'martinidiarte@example.com', '$argon2id$v=19$m=65536,t=3,p=4$aMVAAChBRUpjr1iPfIYB5g$hdAWDHb0oRRiDWIP29sgbx/eg9kIDt68Q32MnUGJ3FE' );
 
 INSERT INTO voters (name, last_name, document, dob, is_candidate, address, telephone_number, sex) VALUES
 ('Lucía', 'Fernández', '48392017', '1998-04-12', FALSE, 'Av. Rivera 1542', '099123456', 'Femenino'),

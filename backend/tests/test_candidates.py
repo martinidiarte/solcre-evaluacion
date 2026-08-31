@@ -30,13 +30,9 @@ def test_get_most_voted_candidates_authenticated():
 def test_most_voted_candidates_ranking_order():
     headers = get_auth_headers(client)
 
-    # La base de datos es real y persiste entre corridas, así que en vez de asumir
-    # un número fijo de votos, calculamos cuántos hacen falta para superar el
-    # máximo actual y así garantizar que nuestro candidato quede primero sin
-    # depender de datos acumulados de ejecuciones anteriores.
-    current_ranking = client.get("/candidates/most-voted", headers=headers).json()
-    current_max_votes = max((c["number_votes"] for c in current_ranking), default=0)
-    votes_needed = current_max_votes + 1
+    # La base de datos de tests se limpia antes de cada test (ver clean_test_database
+    # en conftest.py), así que podemos usar una cantidad fija de votos.
+    votes_needed = 3
 
     top_candidate = create_test_voter(headers, is_candidate=True, sex="Masculino")
     voters = [create_test_voter(headers, is_candidate=False, sex="Femenino") for _ in range(votes_needed)]
@@ -67,12 +63,6 @@ def test_most_voted_candidates_ranking_order():
 def test_most_voted_candidates_expected_order():
     headers = get_auth_headers(client)
 
-    # Partimos del máximo actual para que los tres candidatos que creamos queden
-    # con la cantidad de votos más alta de toda la tabla, sin importar los datos
-    # acumulados de corridas anteriores.
-    current_ranking = client.get("/candidates/most-voted", headers=headers).json()
-    base_votes = max((c["number_votes"] for c in current_ranking), default=0)
-
     first_place = create_test_voter(headers, is_candidate=True, sex="Masculino")
     second_place = create_test_voter(headers, is_candidate=True, sex="Femenino")
     third_place = create_test_voter(headers, is_candidate=True, sex="Otro")
@@ -90,9 +80,9 @@ def test_most_voted_candidates_expected_order():
             assert vote_response.status_code == 201
 
     # Votos estrictamente decrecientes: first_place > second_place > third_place
-    vote_n_times(first_place, base_votes + 3)
-    vote_n_times(second_place, base_votes + 2)
-    vote_n_times(third_place, base_votes + 1)
+    vote_n_times(first_place, 3)
+    vote_n_times(second_place, 2)
+    vote_n_times(third_place, 1)
 
     response = client.get("/candidates/most-voted", headers=headers)
     assert response.status_code == 200
@@ -101,9 +91,9 @@ def test_most_voted_candidates_expected_order():
     votes_by_id = {c["id"]: c["number_votes"] for c in ranking}
 
     # Los tres deben aparecer en el ranking, con la cantidad de votos correcta
-    assert votes_by_id[first_place["id"]] == base_votes + 3
-    assert votes_by_id[second_place["id"]] == base_votes + 2
-    assert votes_by_id[third_place["id"]] == base_votes + 1
+    assert votes_by_id[first_place["id"]] == 3
+    assert votes_by_id[second_place["id"]] == 2
+    assert votes_by_id[third_place["id"]] == 1
 
     # Y en el orden exacto esperado: first_place, luego second_place, luego third_place
     ranking_ids = [c["id"] for c in ranking]
