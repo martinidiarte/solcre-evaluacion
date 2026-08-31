@@ -96,3 +96,35 @@ El backend usa una base de datos de test separada (`solcre_test`), que se crea s
 ```
 docker compose exec backend python -m pytest tests/ -v
 ```
+
+# Colección de Postman
+
+El proyecto incluye una colección de Postman para facilitar la prueba manual de los endpoints de la API.
+
+La colección se encuentra en:
+
+```
+postman/Solcre.postman_collection.json
+```
+Uso
+1. Abrir Postman.
+2. Seleccionar Import.
+3. Importar el archivo postman/Solcre.postman_collection.json.
+4. Verificar que el backend esté ejecutándose en http://localhost:8000.
+5. Ejecutar primero Autenticacion > Iniciar sesion.
+
+Al iniciar sesión correctamente, la colección guarda automáticamente el token JWT en la variable access_token. Las solicitudes administrativas utilizan este token automáticamente para autenticarse.
+
+La colección permite probar:
+- Inicio de sesión del administrador.
+- Listado y consulta de votantes.
+- Alta de nuevos votantes.
+- Listado de candidatos.
+- Registro de votos.
+- Listado y detalle de votos.
+- Ranking de candidatos.
+- Cambio de contraseña del administrador.
+
+La colección utiliza los datos de prueba definidos en backend/db/schema.sql. Para obtener un estado inicial conocido antes de realizar las pruebas, se recomienda cargar previamente dicho archivo siguiendo las instrucciones de la sección Crear el esquema de la base de datos.
+
+Algunas solicitudes modifican el estado de la base de datos. Por ejemplo, cada votante puede votar una única vez y la solicitud de cambio de contraseña modifica la contraseña del administrador.

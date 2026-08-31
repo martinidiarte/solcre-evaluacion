@@ -1,0 +1,221 @@
+{
+  "info": {
+    "_postman_id": "8f50f8ec-80d2-4e30-a503-2c015bc211c3",
+    "name": "Solcre - Sistema de Votacion",
+    "description": "Coleccion para probar la API de Solcre. Ejecute primero 'Autenticacion > Iniciar sesion' para guardar automaticamente el JWT en access_token. Los datos de ejemplo coinciden con backend/db/schema.sql.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "admin_email", "value": "martinidiarte@example.com", "type": "string" },
+    { "key": "admin_password", "value": "admin123", "type": "string" },
+    { "key": "voter_document", "value": "48392017", "type": "string" },
+    { "key": "candidate_id", "value": "9", "type": "string" },
+    { "key": "vote_id", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Autenticacion",
+      "description": "Inicio de sesion del administrador y manejo automatico del JWT.",
+      "item": [
+        {
+          "name": "Iniciar sesion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Login exitoso\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "let body;",
+                  "try { body = pm.response.json(); } catch (error) { body = {}; }",
+                  "",
+                  "pm.test(\"La respuesta contiene access_token\", function () {",
+                  "    pm.expect(body).to.have.property(\"access_token\").that.is.a(\"string\").and.is.not.empty;",
+                  "});",
+                  "",
+                  "if (body.access_token) {",
+                  "    pm.collectionVariables.set(\"access_token\", body.access_token);",
+                  "    if (pm.environment.name) pm.environment.set(\"access_token\", body.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/admin/login", "host": ["{{base_url}}"], "path": ["admin", "login"] },
+            "description": "Guarda automaticamente el JWT devuelto en la variable access_token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Publicas",
+      "description": "Endpoints que no requieren autenticacion.",
+      "item": [
+        {
+          "name": "Listar candidatos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/candidates", "host": ["{{base_url}}"], "path": ["candidates"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Registrar voto",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test(\"Voto registrado\", function () { pm.response.to.have.status(201); });",
+                "let body;",
+                "try { body = pm.response.json(); } catch (error) { body = {}; }",
+                "if (body.id) pm.collectionVariables.set(\"vote_id\", String(body.id));"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document\": \"{{voter_document}}\",\n  \"candidate_id\": {{candidate_id}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{base_url}}/votes", "host": ["{{base_url}}"], "path": ["votes"] },
+            "description": "Registra un voto y guarda su id en vote_id. Cada votante puede votar una sola vez; reinicie la base o cambie voter_document para repetir la prueba."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Administracion (JWT)",
+      "description": "Ejecute primero el login. Todas las solicitudes de esta carpeta heredan Authorization: Bearer {{access_token}}.",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Votantes",
+          "item": [
+            {
+              "name": "Listar votantes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/voters", "host": ["{{base_url}}"], "path": ["voters"] }
+              },
+              "response": []
+            },
+            {
+              "name": "Buscar votante por documento",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/voters/{{voter_document}}", "host": ["{{base_url}}"], "path": ["voters", "{{voter_document}}"] }
+              },
+              "response": []
+            },
+            {
+              "name": "Crear votante",
+              "event": [{
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test(\"Votante creado\", function () { pm.response.to.have.status(201); });",
+                    "let body;",
+                    "try { body = pm.response.json(); } catch (error) { body = {}; }",
+                    "if (body.document) pm.collectionVariables.set(\"voter_document\", body.document);"
+                  ]
+                }
+              }],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Ana\",\n  \"last_name\": \"Prueba\",\n  \"document\": \"60000001\",\n  \"dob\": \"1995-06-15\",\n  \"is_candidate\": false,\n  \"address\": \"Calle de Prueba 123\",\n  \"telephone_number\": \"099000001\",\n  \"sex\": \"Femenino\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": { "raw": "{{base_url}}/voters", "host": ["{{base_url}}"], "path": ["voters"] },
+                "description": "Use un document distinto si ya ejecuto esta solicitud. Si la respuesta incluye document, actualiza voter_document."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Votos",
+          "item": [
+            {
+              "name": "Listar votos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/votes", "host": ["{{base_url}}"], "path": ["votes"] }
+              },
+              "response": []
+            },
+            {
+              "name": "Ver detalle de voto",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/votes/{{vote_id}}", "host": ["{{base_url}}"], "path": ["votes", "{{vote_id}}"] }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Candidatos",
+          "item": [
+            {
+              "name": "Ranking de candidatos",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{base_url}}/candidates/most-voted", "host": ["{{base_url}}"], "path": ["candidates", "most-voted"] }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Cuenta",
+          "item": [
+            {
+              "name": "Cambiar contrasena",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"old_password\": \"{{admin_password}}\",\n  \"new_password\": \"admin456\",\n  \"confirm_new_password\": \"admin456\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": { "raw": "{{base_url}}/admin/change-password", "host": ["{{base_url}}"], "path": ["admin", "change-password"] },
+                "description": "Esta solicitud modifica realmente la contrasena. Si la ejecuta, actualice admin_password a admin456 o restablezca la base antes de volver a iniciar sesion."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
