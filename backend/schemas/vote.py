@@ -33,6 +33,14 @@ class VoteListResponse(BaseModel):
         "from_attributes": True
     }
 
+# Para manejar la paginación de los votos
+class VotePageResponse(BaseModel):
+    items: list[VoteListResponse]
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+
 class VoteResponse(BaseModel):
     id: int
     voter_id: int

@@ -1,14 +1,14 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from db.connection import get_db
 from db.models import Admin, Voter, Vote
 
 from security.security import get_current_admin
 
-from schemas.vote import VoteCreate, VoteDetailResponse, VoteListResponse, VoteResponse
+from schemas.vote import VoteCreate, VoteDetailResponse, VotePageResponse, VoteResponse
 
 from fastapi import APIRouter
 
@@ -55,13 +55,13 @@ def create_vote(datos: VoteCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(voto)
 
-#FALTA MENSAJE DE EXITO?
-
     return voto
 
-# Obtener todos los votos
-@router.get("/votes", response_model=list[VoteListResponse])
-def get_votes(db: Session = Depends(get_db),
+# Obtener los votos paginados, del más reciente al más antiguo
+@router.get("/votes", response_model=VotePageResponse)
+def get_votes(page: int = Query(1, ge=1),
+              page_size: int = Query(15, ge=1, le=100),
+              db: Session = Depends(get_db),
               admin: Admin = Depends(get_current_admin)):
     # Uso alias para poder hacer join de la misma tabla Voter dos veces, una para el votante y otra para el candidato
     Votante = aliased(Voter)
@@ -72,10 +72,22 @@ def get_votes(db: Session = Depends(get_db),
                         Candidato.name.label("candidate_name"), Candidato.last_name.label("candidate_last_name"),
                         Vote.voted_at)
                     .join(Votante, Vote.voter_id == Votante.id)
-                    .join(Candidato, Vote.candidate_id == Candidato.id))
+                    .join(Candidato, Vote.candidate_id == Candidato.id)
+                    .order_by(Vote.voted_at.desc(), Vote.id.desc())
+                    .offset((page - 1) * page_size)
+                    .limit(page_size))
     votos = db.execute(consulta).mappings().all()
 
-    return votos
+    total = db.scalar(select(func.count(Vote.id))) or 0
+    total_pages = (total + page_size - 1) // page_size
+
+    return {
+        "items": votos,
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages
+    }
 
 # Obtener detalle de un voto
 @router.get("/votes/{id}", response_model=VoteDetailResponse)

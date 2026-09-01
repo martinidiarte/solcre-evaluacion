@@ -15,6 +15,41 @@ def test_get_votes_authenticated():
 
     assert response.status_code == 200
 
+def test_get_votes_returns_most_recent_first():
+    headers = get_auth_headers(client)
+    candidate = create_test_voter(headers, is_candidate=True)
+    first_voter = create_test_voter(headers)
+    second_voter = create_test_voter(headers)
+
+    first_vote = client.post(
+        "/votes",
+        json={"document": first_voter["document"], "candidate_id": candidate["id"]}
+    ).json()
+    second_vote = client.post(
+        "/votes",
+        json={"document": second_voter["document"], "candidate_id": candidate["id"]}
+    ).json()
+
+    response = client.get("/votes?page=1&page_size=1", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["id"] == second_vote["id"]
+    assert response.json()["page"] == 1
+    assert response.json()["page_size"] == 1
+    assert response.json()["total"] == 2
+    assert response.json()["total_pages"] == 2
+
+    second_page = client.get("/votes?page=2&page_size=1", headers=headers)
+
+    assert second_page.status_code == 200
+    assert second_page.json()["items"][0]["id"] == first_vote["id"]
+
+def test_get_votes_rejects_invalid_pagination():
+    headers = get_auth_headers(client)
+
+    assert client.get("/votes?page=0", headers=headers).status_code == 422
+    assert client.get("/votes?page_size=101", headers=headers).status_code == 422
+
 def test_create_vote_authenticated():
     headers = get_auth_headers(client)
     voter = create_test_voter(headers, is_candidate=False, sex="Masculino")

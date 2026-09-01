@@ -1,7 +1,8 @@
 import { authFetch } from './api'
 
-export function getVotes() {
-  return authFetch('http://localhost:8000/votes')
+//Para manejar la paginación de los votos por api
+export function getVotes(page = 1, pageSize = 15) {
+  return authFetch(`http://localhost:8000/votes?page=${page}&page_size=${pageSize}`)
 }
 
 export function getMostVoted() {
@@ -23,5 +24,7 @@ export function changePass(passwords) {
   return authFetch('http://localhost:8000/admin/change-password', {
     method: 'POST',
     body: JSON.stringify(passwords)
+  }, {
+    handledUnauthorizedDetails: ['Contraseña incorrecta']
   })
 }

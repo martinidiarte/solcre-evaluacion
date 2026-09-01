@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../App.css'
 import { getMostVoted, getVotes, getVoteId, addVoter, changePass } from '../services/adminServices'
+import Loader from '../components/Loader'
+import { getApiErrors } from '../utils/apiErrors'
 
 
 function AdminPage() {
@@ -14,7 +16,8 @@ function AdminPage() {
   const [votes, setVotes] = useState([])
   const [votesMessage, setVotesMessage] = useState('')
   const [votesPage, setVotesPage] = useState(1)
-  const votesPerPage = 5
+  const [votesTotalPages, setVotesTotalPages] = useState(0)
+  const votesPerPage = 15
 
   const [voteDetail, setVoteDetail] = useState(null)
   const [voteDetailMessage, setVoteDetailMessage] = useState('')
@@ -27,70 +30,85 @@ function AdminPage() {
   const [voterAddress, setVoterAddress] = useState('')
   const [voterPhone, setVoterPhone] = useState('')
   const [voterSex, setVoterSex] = useState('')
-  const [voterMessage, setVoterMessage] = useState('')
+  const [voterFieldErrors, setVoterFieldErrors] = useState({})
+  const [voterApiMessage, setVoterApiMessage] = useState('')
+  const [voterSuccessMessage, setVoterSuccessMessage] = useState('')
 
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [passwordMessage, setPasswordMessage] = useState('')
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState({})
+  const [passwordApiMessage, setPasswordApiMessage] = useState('')
+  const [passwordSuccessMessage, setPasswordSuccessMessage] = useState('')
+
+  const [loadingSection, setLoadingSection] = useState('')
+  const [isAddingVoter, setIsAddingVoter] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
 
   function handleLogout() {
     sessionStorage.removeItem('access_token')
     navigate('/')
   }
 
-  function loadRanking() {
+  async function loadRanking() {
     setActiveSection('ranking')
-    getMostVoted()
-      .then(async (response) => {
-        if (!response) return
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setRankingMessage(data.detail)
-          return
-        }
-
-        setRankingMessage('')
-        setRanking(data)
-      })
+    setLoadingSection('ranking')
+    setRankingMessage('')
+    try {
+      const response = await getMostVoted()
+      if (!response) return
+      const data = await response.json()
+      if (!response.ok) {
+        setRankingMessage(data.detail)
+        return
+      }
+      setRanking(data)
+    } catch {
+      setRankingMessage('No se pudo cargar el ranking')
+    } finally {
+      setLoadingSection('')
+    }
   }
 
-  function loadVotes() {
+  async function loadVotes(page = 1) {
     setActiveSection('votes')
-    getVotes()
-      .then(async (response) => {
-        if (!response) return
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setVotesMessage(data.detail)
-          return
-        }
-
-        setVotesMessage('')
-        setVotes(data)
-        setVotesPage(1)
-      })
+    setLoadingSection('votes')
+    setVotesMessage('')
+    try {
+      const response = await getVotes(page, votesPerPage)
+      if (!response) return
+      const data = await response.json()
+      if (!response.ok) {
+        setVotesMessage(data.detail)
+        return
+      }
+      setVotes(data.items)
+      setVotesPage(data.page)
+      setVotesTotalPages(data.total_pages)
+    } catch {
+      setVotesMessage('No se pudo cargar el listado de votos')
+    } finally {
+      setLoadingSection('')
+    }
   }
 
-  function loadVoteDetail(id) {
+  async function loadVoteDetail(id) {
     setVoteDetailMessage('')
-    getVoteId(id)
-      .then(async (response) => {
-        if (!response) return
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          setVoteDetailMessage(data.detail)
-          return
-        }
-
-        setVoteDetail(data)
-      })
+    setLoadingSection('detail')
+    try {
+      const response = await getVoteId(id)
+      if (!response) return
+      const data = await response.json()
+      if (!response.ok) {
+        setVoteDetailMessage(data.detail)
+        return
+      }
+      setVoteDetail(data)
+    } catch {
+      setVoteDetailMessage('No se pudo cargar el detalle del voto')
+    } finally {
+      setLoadingSection('')
+    }
   }
 
   function closeVoteDetail() {
@@ -99,108 +117,157 @@ function AdminPage() {
   }
 
   useEffect(() => {
-    loadRanking()
+    async function loadInitialRanking() {
+      await loadRanking()
+    }
+    loadInitialRanking()
   }, [])
 
-  function handleAddVoter(event) {
+  function updateVoterField(field, value, setter) {
+    setter(value)
+    setVoterFieldErrors((errors) => ({ ...errors, [field]: '' }))
+    setVoterSuccessMessage('')
+  }
+
+  function resetVoterForm() {
+    setVoterName('')
+    setVoterLastName('')
+    setVoterDocument('')
+    setVoterDob('')
+    setVoterIsCandidate(false)
+    setVoterAddress('')
+    setVoterPhone('')
+    setVoterSex('')
+  }
+
+  async function handleAddVoter(event) {
     event.preventDefault()
+    if (isAddingVoter) return
 
-    if (
-        !voterName.trim() ||
-        !voterLastName.trim() ||
-        !voterDocument.trim() ||
-        !voterDob ||
-        !voterAddress.trim() ||
-        !voterPhone.trim() ||
-        !voterSex
-    ) {
-        setVoterMessage('Todos los campos son obligatorios')
-        return
-    }
-
-    if (!/^\d+$/.test(voterPhone)) {
-        setVoterMessage('El teléfono solo debe contener dígitos')
-        return
-    }
+    const errors = {}
+    if (!voterName.trim()) errors.name = 'El nombre es requerido'
+    else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/.test(voterName.trim())) errors.name = 'El nombre solo puede contener letras y espacios'
+    if (!voterLastName.trim()) errors.lastName = 'El apellido es requerido'
+    else if (!/^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/.test(voterLastName.trim())) errors.lastName = 'El apellido solo puede contener letras y espacios'
+    if (!voterDocument.trim()) errors.document = 'El documento es requerido'
+    if (!voterDob) errors.dob = 'La fecha de nacimiento es requerida'
+    if (!voterAddress.trim()) errors.address = 'La dirección es requerida'
+    if (!voterPhone.trim()) errors.phone = 'El teléfono es requerido'
+    else if (!/^\d+$/.test(voterPhone)) errors.phone = 'El teléfono debe contener solo números'
+    if (!voterSex) errors.sex = 'El sexo es requerido'
 
     const today = new Date()
     const birthDate = new Date(voterDob)
-    
-    if (birthDate > today) {
-        setVoterMessage('La fecha de nacimiento no puede ser futura')
-        return
+    if (voterDob) {
+      if (birthDate > today) {
+        errors.dob = 'La fecha de nacimiento no puede ser futura'
+      } else {
+        const adultDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate())
+        if (birthDate > adultDate) errors.dob = 'El votante debe ser mayor de 18 años'
+      }
     }
 
-    const adultDate = new Date(
-        today.getFullYear() - 18,
-        today.getMonth(),
-        today.getDate()
-    )
+    setVoterFieldErrors(errors)
+    setVoterApiMessage('')
+    setVoterSuccessMessage('')
+    if (Object.keys(errors).length > 0) return
 
-    if (birthDate > adultDate) {
-        setVoterMessage('El votante debe ser mayor de 18 años')
-        return
-    }
-    addVoter({
-      name: voterName,
-      last_name: voterLastName,
-      document: voterDocument,
-      dob: voterDob,
-      is_candidate: voterIsCandidate,
-      address: voterAddress,
-      telephone_number: voterPhone,
-      sex: voterSex
-    })       
-      .then(async (response) => {
-        if (!response) return
+    setIsAddingVoter(true)
+    try {
+      const response = await addVoter({
+        name: voterName,
+        last_name: voterLastName,
+        document: voterDocument,
+        dob: voterDob,
+        is_candidate: voterIsCandidate,
+        address: voterAddress,
+        telephone_number: voterPhone,
+        sex: voterSex
+      })
+      if (!response) return
+      const data = await response.json()
 
-        const data = await response.json()
-
-
-        if (!response.ok) {
-          setVoterMessage(data.detail)
+      if (!response.ok) {
+        if (response.status === 409) {
+          setVoterFieldErrors({ document: data.detail })
           return
         }
+        const { fieldErrors, generalError } = getApiErrors(data.detail, {
+          name: 'name', last_name: 'lastName', document: 'document', dob: 'dob',
+          address: 'address', telephone_number: 'phone', sex: 'sex'
+        })
+        setVoterFieldErrors(fieldErrors)
+        setVoterApiMessage(generalError)
+        return
+      }
 
-        setVoterMessage('Votante agregado correctamente')
-      })
+      resetVoterForm()
+      setVoterSuccessMessage('Votante agregado correctamente')
+    } catch {
+      setVoterApiMessage('No se pudo conectar con la API')
+    } finally {
+      setIsAddingVoter(false)
+    }
   }
 
-  function handleChangePassword(event) {
-    event.preventDefault()
-    if (
-        !oldPassword.trim() ||
-        !newPassword.trim() ||
-        !confirmNewPassword.trim()
-    ) {
-        setPasswordMessage('Todos los campos son obligatorios')
-        return
-    }
-    if (newPassword !== confirmNewPassword) {
-      setPasswordMessage('Las contraseñas no coinciden')
-      return
-    }
-    changePass({
-      old_password: oldPassword,
-      new_password: newPassword,
-      confirm_new_password: confirmNewPassword
+  function updatePasswordField(field, value, setter) {
+    setter(value)
+    setPasswordFieldErrors((errors) => {
+      if (field === 'newPassword' || field === 'confirmNewPassword') {
+        return { ...errors, newPassword: '', confirmNewPassword: '' }
+      }
+      return { ...errors, [field]: '' }
     })
-      .then(async (response) => {
-        if (!response) return
+    setPasswordSuccessMessage('')
+  }
 
-        const data = await response.json()
+  async function handleChangePassword(event) {
+    event.preventDefault()
+    if (isChangingPassword) return
 
-        if (!response.ok) {
-          setPasswordMessage(data.detail)
-          return
-        }
+    const errors = {}
+    if (!oldPassword.trim()) errors.oldPassword = 'La contraseña actual es requerida'
+    if (!newPassword.trim()) errors.newPassword = 'La nueva contraseña es requerida'
+    if (!confirmNewPassword.trim()) errors.confirmNewPassword = 'Debe confirmar la nueva contraseña'
+    else if (newPassword !== confirmNewPassword) {
+      errors.newPassword = 'Las contraseñas no coinciden'
+      errors.confirmNewPassword = 'Las contraseñas no coinciden'
+    }
 
-        setPasswordMessage(data.message)
+    setPasswordFieldErrors(errors)
+    setPasswordApiMessage('')
+    setPasswordSuccessMessage('')
+    if (Object.keys(errors).length > 0) return
 
-        setOldPassword('')
-        setNewPassword('')
-        setConfirmNewPassword('')
+    setIsChangingPassword(true)
+    try {
+      const response = await changePass({
+        old_password: oldPassword,
+        new_password: newPassword,
+        confirm_new_password: confirmNewPassword
       })
+      if (!response) return
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (data.detail === 'Contraseña incorrecta') setPasswordFieldErrors({ oldPassword: data.detail })
+        else if (data.detail === 'La nueva contraseña debe ser diferente a la actual') setPasswordFieldErrors({ newPassword: data.detail })
+        else if (data.detail === 'Las contraseñas no coinciden') {
+          setPasswordFieldErrors({ newPassword: data.detail, confirmNewPassword: data.detail })
+        }
+        else setPasswordApiMessage(data.detail)
+        return
+      }
+
+      setPasswordSuccessMessage(data.message)
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+    } catch {
+      setPasswordApiMessage('No se pudo conectar con la API')
+    } finally {
+      setIsChangingPassword(false)
+    }
   }
 
   return (
@@ -216,12 +283,14 @@ function AdminPage() {
         <nav className="tab-nav">
           <button type="button"
             className={`tab-button ${activeSection === 'ranking' ? 'tab-button-active' : ''}`}
+            disabled={loadingSection === 'ranking'}
             onClick={loadRanking}>
             Ranking
           </button>
           <button type="button"
             className={`tab-button ${activeSection === 'votes' ? 'tab-button-active' : ''}`}
-            onClick={loadVotes}>
+            disabled={loadingSection === 'votes'}
+            onClick={() => loadVotes(1)}>
             Listado de votos
           </button>
           <button type="button"
@@ -238,6 +307,11 @@ function AdminPage() {
 
         {activeSection === 'ranking' && (
           <div className="tab-content">
+            {loadingSection === 'ranking' && (
+              <div className="loader-slot">
+                <Loader label="Cargando ranking" />
+              </div>
+            )}
             {rankingMessage && <p className="message message-error">{rankingMessage}</p>}
             <table className="data-table">
               <thead>
@@ -276,6 +350,11 @@ function AdminPage() {
 
         {activeSection === 'votes' && (
           <div className="tab-content">
+            {loadingSection === 'votes' && (
+              <div className="loader-slot">
+                <Loader label="Cargando votos" />
+              </div>
+            )}
             {votesMessage && <p className="message message-error">{votesMessage}</p>}
             {ranking.length > 0 && (() => {
               const totalRankingVotes = ranking.reduce((sum, item) => sum + item.number_votes, 0)
@@ -309,13 +388,14 @@ function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {votes.slice((votesPage - 1) * votesPerPage, votesPage * votesPerPage).map((vote) => (
+                {votes.map((vote) => (
                   <tr key={vote.id}>
                     <td>{vote.voter_name} {vote.voter_last_name}</td>
                     <td>{vote.candidate_name} {vote.candidate_last_name}</td>
                     <td>{new Date(vote.voted_at).toLocaleString()}</td>
                     <td className="actions-cell">
                       <button type="button" className="btn-table-action"
+                        disabled={loadingSection === 'detail'}
                         onClick={() => loadVoteDetail(vote.id)}>
                         Ver detalle
                       </button>
@@ -324,19 +404,19 @@ function AdminPage() {
                 ))}
               </tbody>
             </table>
-            {votes.length > 0 && (
+            {votesTotalPages > 0 && (
               <div className="pagination">
                 <button type="button" className="btn-table-action"
                   disabled={votesPage === 1}
-                  onClick={() => setVotesPage((page) => page - 1)}>
+                  onClick={() => loadVotes(votesPage - 1)}>
                   Anterior
                 </button>
                 <span className="pagination-info">
-                  Página {votesPage} de {Math.ceil(votes.length / votesPerPage)}
+                  Página {votesPage} de {votesTotalPages}
                 </span>
                 <button type="button" className="btn-table-action"
-                  disabled={votesPage >= Math.ceil(votes.length / votesPerPage)}
-                  onClick={() => setVotesPage((page) => page + 1)}>
+                  disabled={votesPage >= votesTotalPages}
+                  onClick={() => loadVotes(votesPage + 1)}>
                   Siguiente
                 </button>
               </div>
@@ -346,59 +426,73 @@ function AdminPage() {
 
         {activeSection === 'addVoter' && (
           <div className="tab-content">
-            <form className="form-stack" onSubmit={handleAddVoter}>
+            <form className="form-stack" onSubmit={handleAddVoter} noValidate>
               <div className="form-grid">
                 <div className="form-group">
-                  <label className="form-label">Nombre</label>
-                  <input type="text" className="form-input"
+                  <label className="form-label" htmlFor="voter-name">Nombre <span className="required-mark">*</span></label>
+                  <input id="voter-name" type="text" className={`form-input ${voterFieldErrors.name ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.name)}
                     placeholder="Ej: Juan"
                     value={voterName}
-                    onChange={(event) => setVoterName(event.target.value)}/>
+                    onChange={(event) => updateVoterField('name', event.target.value, setVoterName)}/>
+                  {voterFieldErrors.name && <span className="field-error">{voterFieldErrors.name}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Apellido</label>
-                  <input type="text" className="form-input"
+                  <label className="form-label" htmlFor="voter-last-name">Apellido <span className="required-mark">*</span></label>
+                  <input id="voter-last-name" type="text" className={`form-input ${voterFieldErrors.lastName ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.lastName)}
                     placeholder="Ej: Pérez"
                     value={voterLastName}
-                    onChange={(event) => setVoterLastName(event.target.value)}/>
+                    onChange={(event) => updateVoterField('lastName', event.target.value, setVoterLastName)}/>
+                  {voterFieldErrors.lastName && <span className="field-error">{voterFieldErrors.lastName}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Documento</label>
-                  <input type="text" className="form-input"
+                  <label className="form-label" htmlFor="voter-document">Documento <span className="required-mark">*</span></label>
+                  <input id="voter-document" type="text" className={`form-input ${voterFieldErrors.document ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.document)}
                     placeholder="Ej: 12345678"
                     value={voterDocument}
-                    onChange={(event) => setVoterDocument(event.target.value)}/>
+                    onChange={(event) => updateVoterField('document', event.target.value, setVoterDocument)}/>
+                  {voterFieldErrors.document && <span className="field-error">{voterFieldErrors.document}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Fecha de nacimiento</label>
-                  <input type="date" className="form-input"
+                  <label className="form-label" htmlFor="voter-dob">Fecha de nacimiento <span className="required-mark">*</span></label>
+                  <input id="voter-dob" type="date" className={`form-input ${voterFieldErrors.dob ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.dob)}
                     value={voterDob}
-                    onChange={(event) => setVoterDob(event.target.value)}/>
+                    onChange={(event) => updateVoterField('dob', event.target.value, setVoterDob)}/>
+                  {voterFieldErrors.dob && <span className="field-error">{voterFieldErrors.dob}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Dirección</label>
-                  <input type="text" className="form-input"
+                  <label className="form-label" htmlFor="voter-address">Dirección <span className="required-mark">*</span></label>
+                  <input id="voter-address" type="text" className={`form-input ${voterFieldErrors.address ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.address)}
                     placeholder="Ej: Av. Siempreviva 742"
                     value={voterAddress}
-                    onChange={(event) => setVoterAddress(event.target.value)}/>
+                    onChange={(event) => updateVoterField('address', event.target.value, setVoterAddress)}/>
+                  {voterFieldErrors.address && <span className="field-error">{voterFieldErrors.address}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Teléfono</label>
-                  <input type="text" className="form-input"
+                  <label className="form-label" htmlFor="voter-phone">Teléfono <span className="required-mark">*</span></label>
+                  <input id="voter-phone" type="text" className={`form-input ${voterFieldErrors.phone ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.phone)}
                     placeholder="Ej: 1122334455"
                     value={voterPhone}
-                    onChange={(event) => setVoterPhone(event.target.value)}/>
+                    onChange={(event) => updateVoterField('phone', event.target.value, setVoterPhone)}/>
+                  {voterFieldErrors.phone && <span className="field-error">{voterFieldErrors.phone}</span>}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Sexo</label>
-                  <select className="form-select"
+                  <label className="form-label" htmlFor="voter-sex">Sexo <span className="required-mark">*</span></label>
+                  <select id="voter-sex" className={`form-select ${voterFieldErrors.sex ? 'form-control-invalid' : ''}`}
+                    aria-invalid={Boolean(voterFieldErrors.sex)}
                     value={voterSex}
-                    onChange={(event) => setVoterSex(event.target.value)}>
+                    onChange={(event) => updateVoterField('sex', event.target.value, setVoterSex)}>
                     <option value="">Seleccione</option>
                     <option value="Masculino">Masculino</option>
                     <option value="Femenino">Femenino</option>
                     <option value="Otro">Otro</option>
                   </select>
+                  {voterFieldErrors.sex && <span className="field-error">{voterFieldErrors.sex}</span>}
                 </div>
                 <div className="form-group">
                   <span className="form-label">¿Es candidato?</span>
@@ -420,53 +514,59 @@ function AdminPage() {
                   </div>
                 </div>
               </div>
-              <button type="submit" className="btn-primary">
-                Agregar votante
+              <button type="submit" className="btn-primary" disabled={isAddingVoter}>
+                {isAddingVoter ? 'Agregando votante…' : 'Agregar votante'}
               </button>
+              {isAddingVoter && (
+                <div className="loader-slot"><Loader label="Agregando votante" /></div>
+              )}
             </form>
-            {voterMessage && (
-              <p className={`message ${voterMessage === 'Votante agregado correctamente' ? 'message-success' : 'message-error'}`}>
-                {voterMessage}
-              </p>
-            )}
+            {voterSuccessMessage && <p className="message message-success">{voterSuccessMessage}</p>}
+            {voterApiMessage && <p className="message message-error">{voterApiMessage}</p>}
           </div>
         )}
 
         {activeSection === 'password' && (
           <div className="tab-content">
-            <form className="form-stack" onSubmit={handleChangePassword}>
+            <form className="form-stack" onSubmit={handleChangePassword} noValidate>
               <div className="form-group">
-                <label className="form-label">Contraseña actual</label>
-                <input type="password" className="form-input"
+                <label className="form-label" htmlFor="old-password">Contraseña actual <span className="required-mark">*</span></label>
+                <input id="old-password" type="password" className={`form-input ${passwordFieldErrors.oldPassword ? 'form-control-invalid' : ''}`}
+                  aria-invalid={Boolean(passwordFieldErrors.oldPassword)}
                   value={oldPassword}
-                  onChange={(event) => setOldPassword(event.target.value)}/>
+                  onChange={(event) => updatePasswordField('oldPassword', event.target.value, setOldPassword)}/>
+                {passwordFieldErrors.oldPassword && <span className="field-error">{passwordFieldErrors.oldPassword}</span>}
               </div>
               <div className="form-group">
-                <label className="form-label">Nueva contraseña</label>
-                <input type="password" className="form-input"
+                <label className="form-label" htmlFor="new-password">Nueva contraseña <span className="required-mark">*</span></label>
+                <input id="new-password" type="password" className={`form-input ${passwordFieldErrors.newPassword ? 'form-control-invalid' : ''}`}
+                  aria-invalid={Boolean(passwordFieldErrors.newPassword)}
                   value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}/>
+                  onChange={(event) => updatePasswordField('newPassword', event.target.value, setNewPassword)}/>
+                {passwordFieldErrors.newPassword && <span className="field-error">{passwordFieldErrors.newPassword}</span>}
               </div>
               <div className="form-group">
-                <label className="form-label">Confirmar nueva contraseña</label>
-                <input type="password" className="form-input"
+                <label className="form-label" htmlFor="confirm-password">Confirmar nueva contraseña <span className="required-mark">*</span></label>
+                <input id="confirm-password" type="password" className={`form-input ${passwordFieldErrors.confirmNewPassword ? 'form-control-invalid' : ''}`}
+                  aria-invalid={Boolean(passwordFieldErrors.confirmNewPassword)}
                   value={confirmNewPassword}
-                  onChange={(event) => setConfirmNewPassword(event.target.value)}/>
+                  onChange={(event) => updatePasswordField('confirmNewPassword', event.target.value, setConfirmNewPassword)}/>
+                {passwordFieldErrors.confirmNewPassword && <span className="field-error">{passwordFieldErrors.confirmNewPassword}</span>}
               </div>
-              <button type="submit" className="btn-primary">
-                Cambiar contraseña
+              <button type="submit" className="btn-primary" disabled={isChangingPassword}>
+                {isChangingPassword ? 'Actualizando…' : 'Cambiar contraseña'}
               </button>
+              {isChangingPassword && (
+                <div className="loader-slot"><Loader label="Actualizando contraseña" /></div>
+              )}
             </form>
-            {passwordMessage && (
-              <p className={`message ${passwordMessage === 'Contraseña actualizada correctamente' ? 'message-success' : 'message-error'}`}>
-                {passwordMessage}
-              </p>
-            )}
+            {passwordSuccessMessage && <p className="message message-success">{passwordSuccessMessage}</p>}
+            {passwordApiMessage && <p className="message message-error">{passwordApiMessage}</p>}
           </div>
         )}
       </section>
 
-      {(voteDetail || voteDetailMessage) && (
+      {(voteDetail || voteDetailMessage || loadingSection === 'detail') && (
         <div className="modal-overlay" onClick={closeVoteDetail}>
           <div className="modal-content" onClick={(event) => event.stopPropagation()}>
             <div className="modal-header">
@@ -477,6 +577,11 @@ function AdminPage() {
             </div>
 
             {voteDetailMessage && <p className="message message-error">{voteDetailMessage}</p>}
+            {loadingSection === 'detail' && (
+              <div className="loader-slot">
+                <Loader label="Cargando detalle del voto" />
+              </div>
+            )}
 
             {voteDetail && (
               <div className="detail-list">

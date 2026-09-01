@@ -7,7 +7,8 @@ export function authHeaders() {
     }
 }
 
-export async function authFetch(url, options = {}) {
+export async function authFetch(url, options = {}, config = {}) {
+    const { handledUnauthorizedDetails = [] } = config
     const response = await fetch(url, {
         ...options,
         headers: {
@@ -17,6 +18,12 @@ export async function authFetch(url, options = {}) {
     })
 
     if (response.status === 401) {
+        const data = await response.clone().json().catch(() => ({}))
+
+        if (handledUnauthorizedDetails.includes(data.detail)) {
+            return response
+        }
+
         sessionStorage.removeItem('access_token')
         window.location.href = '/admin/login'
         return null

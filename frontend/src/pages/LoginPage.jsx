@@ -1,40 +1,56 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Loader from '../components/Loader'
 import '../App.css'
 
 function LoginPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [message, setMessage] = useState('')
-function handleLogin(event) {
-  event.preventDefault()
-  fetch('http://localhost:8000/admin/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      email: email,
-      password: password
-    })
-  })
-    .then(async (response) => {
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [apiMessage, setApiMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  function updateField(field, value, setter) {
+    setter(value)
+    setFieldErrors((errors) => ({ ...errors, [field]: '' }))
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault()
+    if (isSubmitting) return
+
+    const errors = {}
+    if (!email.trim()) errors.email = 'El email es requerido'
+    if (!password.trim()) errors.password = 'La contraseña es requerida'
+
+    setFieldErrors(errors)
+    setApiMessage('')
+    if (Object.keys(errors).length > 0) return
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('http://localhost:8000/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
       const data = await response.json()
 
-        console.log(data)
-
       if (!response.ok) {
-        setMessage(data.detail)
+        setApiMessage(data.detail)
         return
       }
-      // Guardo el token 
+
       sessionStorage.setItem('access_token', data.access_token)
-      setMessage('Ingreso Exitoso')
-      // Redirecciono 
       navigate('/admin')
-    })
-}
+    } catch {
+      setApiMessage('No se pudo conectar con la API')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="page">
       <section id="center" className="card">
@@ -44,31 +60,36 @@ function handleLogin(event) {
             Volver al inicio
           </button>
         </div>
-        <form className="form-stack" onSubmit={handleLogin}>
+        <form className="form-stack" onSubmit={handleLogin} noValidate>
           <div className="form-group">
-            <label className="form-label">Email </label>
-            <input type="text"
-              className="form-input"
+            <label className="form-label" htmlFor="login-email">Email <span className="required-mark">*</span></label>
+            <input id="login-email" type="text"
+              className={`form-input ${fieldErrors.email ? 'form-control-invalid' : ''}`}
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
               placeholder="ejemplo@correo.com"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}/>
+              onChange={(event) => updateField('email', event.target.value, setEmail)}/>
+            {fieldErrors.email && <span id="login-email-error" className="field-error">{fieldErrors.email}</span>}
           </div>
           <div className="form-group">
-            <label className="form-label">Contraseña </label>
-            <input type="password"
-              className="form-input"
+            <label className="form-label" htmlFor="login-password">Contraseña <span className="required-mark">*</span></label>
+            <input id="login-password" type="password"
+              className={`form-input ${fieldErrors.password ? 'form-control-invalid' : ''}`}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}/>
+              onChange={(event) => updateField('password', event.target.value, setPassword)}/>
+            {fieldErrors.password && <span id="login-password-error" className="field-error">{fieldErrors.password}</span>}
           </div>
-          <button type="submit" className="btn-primary">
-            Ingresar
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Ingresando…' : 'Ingresar'}
           </button>
+          {isSubmitting && (
+            <div className="loader-slot"><Loader label="Iniciando sesión" /></div>
+          )}
         </form>
-        {message && (
-          <p className={`message ${message === 'Ingreso Exitoso' ? 'message-success' : 'message-error'}`}>
-            {message}
-          </p>
-        )}
+        {apiMessage && <p className="message message-error">{apiMessage}</p>}
       </section>
     </div>
   )

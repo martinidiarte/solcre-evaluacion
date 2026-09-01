@@ -59,7 +59,7 @@ Comprobar el estado de los servicios:
 docker compose ps
 ```
 
-Antes de crear el esquema, comprobar que MySQL muestre `ready for connections`:
+Antes de crear el esquema, se puede comprobar que MySQL muestre `ready for connections`:
 
 ```powershell
 docker compose logs -f db
@@ -155,6 +155,12 @@ La API queda disponible en:
 - Documentación interactiva (Swagger): http://localhost:8000/docs
 - Documentación alternativa (ReDoc): http://localhost:8000/redoc
 
+El listado administrativo de votos se pagina desde la API. Acepta `page` desde 1 y `page_size` entre 1 y 100; por defecto devuelve 15 votos ordenados del más reciente al más antiguo:
+
+```text
+GET http://localhost:8000/votes?page=1&page_size=15
+```
+
 ## 6. Ejecutar los tests
 
 El backend usa una base de datos de test separada (`solcre_test`), que se crea automáticamente y se limpia antes de cada test (ver [backend/tests/conftest.py](backend/tests/conftest.py)):
@@ -225,4 +231,26 @@ La colección permite probar:
 
 La colección utiliza los datos de prueba definidos en backend/db/schema.sql. Para obtener un estado inicial conocido antes de realizar las pruebas, se recomienda cargar previamente dicho archivo siguiendo las instrucciones de la sección Crear el esquema de la base de datos.
 
-Algunas solicitudes modifican el estado de la base de datos. Por ejemplo, cada votante puede votar una única vez y la solicitud de cambio de contraseña modifica la contraseña del administrador.
+La colección está ordenada para ejecutarse completa con Collection Runner: obtiene un candidato existente, crea un votante con documento único, registra su voto y reutiliza los identificadores generados en las consultas posteriores. La prueba de cambio de contraseña restaura automáticamente la contraseña original al finalizar. Cada ejecución conserva en la base el votante y el voto creados.
+
+## 9. Generar datos para pruebas de rendimiento
+
+El script [backend/scripts/generate_stress_data.py](backend/scripts/generate_stress_data.py) agrega datos masivos sin eliminar los registros existentes. Por defecto crea 100.000 votantes, de los cuales 500 son candidatos, y registra 80.000 votos:
+
+```powershell
+docker compose exec backend python scripts/generate_stress_data.py --yes
+```
+
+El volumen y el tamaño de los lotes son configurables. Por ejemplo:
+
+```powershell
+docker compose exec backend python scripts/generate_stress_data.py --voters 500000 --candidates 1000 --votes 450000 --batch-size 10000 --yes
+```
+
+Cada ejecución usa documentos únicos y conserva los datos anteriores. Para ver todas las opciones:
+
+```powershell
+docker compose exec backend python scripts/generate_stress_data.py --help
+```
+
+> **Advertencia:** Ejecutar únicamente en un entorno local o de pruebas. Para eliminar todos los datos generados junto con la base local se puede usar `docker compose down -v`, tal como se explica en el punto 7.
