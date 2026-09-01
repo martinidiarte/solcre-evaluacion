@@ -8,11 +8,16 @@ from security.security import create_access_token, hash_password, verify_passwor
 from db.connection import get_db
 from db.models import Admin
 
-from schemas.admin import AdminLogin, AdminPasswordChange, AdminTokenResponse
+from schemas.admin import AdminLogin, AdminPasswordChange, AdminResponse, AdminTokenResponse
 
 from fastapi import APIRouter
 
 router = APIRouter()
+
+# Rutas para la autenticación y gestión de administradores
+@router.get("/admin/me", response_model=AdminResponse)
+def get_authenticated_admin(admin: Admin = Depends(get_current_admin)):
+    return admin
 
 @router.post("/admin/login", response_model=AdminTokenResponse)
 def login(datos: AdminLogin, db: Session = Depends(get_db)):

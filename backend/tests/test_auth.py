@@ -48,6 +48,19 @@ def test_login_incorrect_email():
         )
     assert login_response.status_code == 401
 
+def test_get_authenticated_admin():
+    headers = get_auth_headers(client)
+
+    response = client.get("/admin/me", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["email"] == "martinidiarte@example.com"
+
+def test_get_authenticated_admin_without_authentication():
+    response = client.get("/admin/me")
+
+    assert response.status_code == 401
+
 def test_change_password_without_authentication():
     response = client.post(
         "/admin/change-password",

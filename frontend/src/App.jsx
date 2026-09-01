@@ -2,6 +2,8 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import VotePage from './pages/VotePage'
 import AdminPage from './pages/AdminPage'
+import NotFoundPage from './pages/NotFoundPage'
+import ProtectedRoute from './components/ProtectedRoute'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 function App() {
@@ -11,7 +13,12 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/votar" element={<VotePage />} />
         <Route path="/admin/login" element={<LoginPage />} />
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminPage />
+          </ProtectedRoute>
+        } />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

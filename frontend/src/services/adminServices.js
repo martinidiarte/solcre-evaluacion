@@ -1,5 +1,9 @@
 import { authFetch } from './api'
 
+export function validateAdminSession() {
+  return authFetch('http://localhost:8000/admin/me')
+}
+
 //Para manejar la paginación de los votos por api
 export function getVotes(page = 1, pageSize = 15) {
   return authFetch(`http://localhost:8000/votes?page=${page}&page_size=${pageSize}`)
