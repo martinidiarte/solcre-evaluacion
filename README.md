@@ -9,24 +9,38 @@ Sistema de votación con backend en FastAPI (MySQL + SQLAlchemy) y frontend en R
 
 ## Requisitos previos
 
+- Git
 - Docker y Docker Compose (para el backend y la base de datos)
 - Node.js 20.19+ y npm (para el frontend, que corre fuera de Docker)
 
+## Descargar el proyecto
+
+```powershell
+git clone https://github.com/martinidiarte/solcre-evaluacion.git
+cd solcre-evaluacion
+```
+
 ## 1. Variables de entorno
 
-Copiar [.env.example](.env.example) a `.env` en la raíz del proyecto y completar los valores:
+Copiar [.env.example](.env.example) a `.env` en la raíz del proyecto:
 
+```powershell
+Copy-Item .env.example .env
 ```
-MYSQL_ROOT_PASSWORD=
-MYSQL_DATABASE=
-MYSQL_USER=
-MYSQL_PASSWORD=
+
+Completar el archivo con valores locales. Por ejemplo:
+
+```env
+MYSQL_ROOT_PASSWORD=root_password_local
+MYSQL_DATABASE=solcre
+MYSQL_USER=solcre_user
+MYSQL_PASSWORD=solcre_password_local
 MYSQL_HOST=db
 MYSQL_PORT=3306
-JWT_SECRET_KEY=
+JWT_SECRET_KEY=cambiar-por-una-clave-de-al-menos-32-bytes
 ```
 
-`MYSQL_HOST` debe ser `db` (el nombre del servicio en [compose.yml](compose.yml)) y `MYSQL_PORT` `3306`. `MYSQL_ROOT_PASSWORD` se utiliza para tareas administrativas de MySQL, como inicializar la base de datos y crear la base aislada utilizada por los tests.
+`MYSQL_HOST` debe ser `db` (el nombre del servicio en [compose.yml](compose.yml)) y `MYSQL_PORT` debe ser `3306`. `MYSQL_ROOT_PASSWORD` se utiliza para tareas administrativas de MySQL, como inicializar la base de datos y crear la base aislada utilizada por los tests. Para HS256, `JWT_SECRET_KEY` debe tener como mínimo 32 bytes.
 
 ## 2. Levantar el backend y la base de datos
 
@@ -38,6 +52,20 @@ Esto levanta dos contenedores:
 
 - `solcre-backend`: API FastAPI en http://localhost:8000 (docs interactivas en http://localhost:8000/docs)
 - `solcre-db`: MySQL 8.4 en `localhost:3306`
+
+Comprobar el estado de los servicios:
+
+```powershell
+docker compose ps
+```
+
+Antes de crear el esquema, comprobar que MySQL muestre `ready for connections`:
+
+```powershell
+docker compose logs -f db
+```
+
+Presionar `Ctrl+C` para dejar de seguir los logs; los contenedores continuarán ejecutándose.
 
 ## 3. Crear el esquema de la base de datos
 
@@ -51,6 +79,8 @@ Crea las tablas y carga los datos iniciales necesarios para probar la aplicació
 - 10 votantes.
 - 8 votantes comunes.
 - 2 candidatos.
+
+> **Advertencia:** este script elimina y vuelve a crear las tablas. Se debe utilizar únicamente para inicializar o restablecer el entorno local de evaluación.
 
 En PowerShell:
 
@@ -70,6 +100,12 @@ Contraseña: admin123
 
 Estas credenciales están destinadas únicamente al entorno local de evaluación. La contraseña se almacena en la base de datos mediante un hash Argon2.
 
+Para probar una votación desde el frontend se puede utilizar este votante precargado:
+
+```text
+Documento: 48392017
+```
+
 ### Opción B — Alembic
 
 Aplica las migraciones para crear la estructura de la base de datos:
@@ -81,37 +117,99 @@ Esta opción crea únicamente la estructura de la base de datos y no carga los d
 
 ## 4. Levantar el frontend
 
-```
+```powershell
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Corre en http://localhost:5173. El backend tiene CORS habilitado específicamente para ese origen ([backend/main.py](backend/main.py)), y el frontend se comunica con la API disponible en `http://localhost:8000`, por lo que no requiere variables de entorno adicionales para ejecutarse localmente.
+En Windows, si PowerShell bloquea `npm.ps1`, utilizar `npm.cmd ci` y `npm.cmd run dev`.
 
-## Tests
+El frontend queda disponible en:
 
-El backend usa una base de datos de test separada (`solcre_test`), que se crea sola y se limpia antes de cada test (ver [backend/tests/conftest.py](backend/tests/conftest.py)):
+- Inicio: http://localhost:5173
+- Votación: http://localhost:5173/votar
+- Administración: http://localhost:5173/admin/login
+
+El backend tiene CORS habilitado específicamente para ese origen ([backend/main.py](backend/main.py)), y el frontend se comunica con la API disponible en `http://localhost:8000`, por lo que no requiere variables de entorno adicionales para ejecutarse localmente.
+
+## 5. Levantar la API
+
+El punto 2 ya deja la API levantada. Desde la raíz del proyecto también se pueden iniciar únicamente la base de datos y el backend con:
 
 ```
+docker compose up -d --build db backend
+```
+
+Para verificar que la API inició correctamente, consultar los logs del backend:
+
+```
+docker compose logs -f backend
+```
+
+Cuando aparezca `Application startup complete`, presionar `Ctrl+C` para dejar de seguir los logs.
+
+La API queda disponible en:
+
+- API: http://localhost:8000
+- Documentación interactiva (Swagger): http://localhost:8000/docs
+- Documentación alternativa (ReDoc): http://localhost:8000/redoc
+
+## 6. Ejecutar los tests
+
+El backend usa una base de datos de test separada (`solcre_test`), que se crea automáticamente y se limpia antes de cada test (ver [backend/tests/conftest.py](backend/tests/conftest.py)):
+
+```powershell
 docker compose exec backend python -m pytest tests/ -v
 ```
 
-# Colección de Postman
+Para ejecutar los tests con cobertura:
+
+```powershell
+docker compose exec backend python -m pytest tests/ -q --cov=db --cov=routers --cov=schemas --cov=security --cov=main --cov-report=term-missing
+```
+
+Para validar el frontend:
+
+```powershell
+cd frontend
+npm run build
+npm run lint
+```
+
+## 7. Detener o reiniciar el proyecto
+
+Para detener los contenedores conservando los datos de MySQL:
+
+```powershell
+docker compose down
+```
+
+Para eliminar también el volumen y todos los datos locales de MySQL:
+
+```powershell
+docker compose down -v
+```
+
+> **Advertencia:** `docker compose down -v` elimina la base de datos local y no se puede deshacer. Después será necesario repetir el punto 3.
+
+## 8. Colección de Postman
 
 El proyecto incluye una colección de Postman para facilitar la prueba manual de los endpoints de la API.
 
 La colección se encuentra en:
 
-```
+```text
 postman/Solcre.postman_collection.json
 ```
-Uso
+
+### Uso
+
 1. Abrir Postman.
 2. Seleccionar Import.
-3. Importar el archivo postman/Solcre.postman_collection.json.
+3. Importar el archivo `postman/Solcre.postman_collection.json`.
 4. Verificar que el backend esté ejecutándose en http://localhost:8000.
-5. Ejecutar primero Autenticacion > Iniciar sesion.
+5. Ejecutar primero `Autenticacion > Iniciar sesion`.
 
 Al iniciar sesión correctamente, la colección guarda automáticamente el token JWT en la variable access_token. Las solicitudes administrativas utilizan este token automáticamente para autenticarse.
 

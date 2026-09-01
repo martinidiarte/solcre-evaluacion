@@ -45,7 +45,7 @@ urllib3==2.7.0
 uvicorn==0.52.4
 watchfiles==1.2.0
 websockets==17.1
-pwdlib[argon2]
-PyJWT
-pytest
-httpx
+pwdlib[argon2]==0.3.1
+PyJWT==2.13.0
+pytest==9.1.1
+pytest-cov==7.1.0
